@@ -1,0 +1,40 @@
+[package]
+name = "atom-engine"
+version = "4.0.0"
+edition = "2021"
+description = "A pure, general-purpose template engine in Rust"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/atom-engine/atom-engine"
+
+[dependencies]
+anyhow = "1"
+thiserror = "1"
+indexmap = { version = "2", features = ["serde"] }
+heck = "0.5"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+unicode-segmentation = "1"
+regex = "1"
+base64 = "0.22"
+sha2 = "0.10"
+md-5 = "0.10"
+uuid = { version = "1", features = ["v4"] }
+strsim = "0.11"
+
+rayon = { version = "1", optional = true }
+
+[features]
+default = []
+parallel = ["dep:rayon"]
+html = []
+
+[dev-dependencies]
+insta = "1"
+tempfile = "3"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
