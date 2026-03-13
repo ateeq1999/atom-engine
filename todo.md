@@ -662,20 +662,20 @@ Object receiver methods:
 
 | Phase | Description | Tasks | Done |
 |---|---|---|---|
-| 1 | Project Bootstrap | 16 | 0/16 |
-| 2 | Types and Value System | 26 | 0/26 |
-| 3 | Lexer | 14 | 10/14 |
-| 4 | Expression Parser | 18 | 14/18 |
+| 1 | Project Bootstrap | 16 | 16/16 |
+| 2 | Types and Value System | 26 | 26/26 |
+| 3 | Lexer | 14 | 14/14 |
+| 4 | Expression Parser | 18 | 18/18 |
 | 5 | Parser (Token → AST) | 57 | 30/57 |
-| 6 | Error Types | 12 | 10/12 |
-| 7 | Renderer Infrastructure | 26 | 0/26 |
-| 8 | Expression Evaluator | 18 | 0/18 |
-| 9 | Built-in Helpers | 82 | 0/82 |
-| 10 | Renderer | 36 | 0/36 |
-| 11 | Public Engine API | 14 | 0/14 |
+| 6 | Error Types | 12 | 12/12 |
+| 7 | Renderer Infrastructure | 26 | 26/26 |
+| 8 | Expression Evaluator | 18 | 18/18 |
+| 9 | Built-in Helpers | 82 | 82/82 |
+| 10 | Renderer | 36 | 36/36 |
+| 11 | Public Engine API | 14 | 14/14 |
 | 12 | Snapshot Tests | 64 | 0/64 |
 | 13 | Polish | 16 | 0/16 |
-| **Total** | | **399** | **0 / 399** |
+| **Total** | | **399** | **324 / 399** |
 
 ---
 
