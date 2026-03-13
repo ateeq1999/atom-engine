@@ -666,7 +666,7 @@ Object receiver methods:
 | 2 | Types and Value System | 26 | 0/26 |
 | 3 | Lexer | 14 | 10/14 |
 | 4 | Expression Parser | 18 | 14/18 |
-| 5 | Parser (Token → AST) | 57 | 0/57 |
+| 5 | Parser (Token → AST) | 57 | 30/57 |
 | 6 | Error Types | 12 | 0/12 |
 | 7 | Renderer Infrastructure | 26 | 0/26 |
 | 8 | Expression Evaluator | 18 | 0/18 |
