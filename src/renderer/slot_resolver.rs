@@ -1,7 +1,7 @@
 use crate::parser::parser::Node;
 use std::collections::HashMap;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SlotResolver {
     named: HashMap<String, Vec<Node>>,
     main: Vec<Node>,
@@ -34,6 +34,33 @@ impl SlotResolver {
         }
 
         SlotResolver { named, main }
+    }
+
+    pub fn new() -> Self {
+        SlotResolver {
+            named: HashMap::new(),
+            main: Vec::new(),
+        }
+    }
+
+    pub fn add_fill(&mut self, name: &str, nodes: Vec<Node>) {
+        if name == "main" {
+            self.main = nodes;
+        } else {
+            self.named.insert(name.to_string(), nodes);
+        }
+    }
+
+    pub fn get_fill(&self, name: &str) -> Option<&Vec<Node>> {
+        if name == "main" {
+            if self.main.is_empty() {
+                None
+            } else {
+                Some(&self.main)
+            }
+        } else {
+            self.named.get(name)
+        }
     }
 
     pub fn resolve(&self, name: Option<&str>) -> &[Node] {

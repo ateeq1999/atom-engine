@@ -96,8 +96,8 @@ pub enum RenderError {
     #[error("Cannot set undeclared variable `{name}`")]
     SetUndeclaredVariable { name: String },
 
-    #[error("Unknown template `{path}`")]
-    UnknownTemplate { path: String },
+    #[error("Template not found: `{path}`")]
+    TemplateNotFound { path: String },
 
     #[error("Maximum loop iterations ({limit}) exceeded")]
     MaxLoopIterationsExceeded { limit: usize },
@@ -122,6 +122,12 @@ pub enum RenderError {
 
     #[error("Render error: {0}")]
     Unknown(String),
+}
+
+impl From<ParseError> for RenderError {
+    fn from(e: ParseError) -> Self {
+        RenderError::Unknown(e.to_string())
+    }
 }
 
 pub type Result<T, E = ParseError> = std::result::Result<T, E>;

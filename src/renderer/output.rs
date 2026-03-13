@@ -16,6 +16,14 @@ impl OutputBuffer {
         self.inner.push_str(s);
     }
 
+    pub fn push_str(&mut self, s: &str) {
+        self.inner.push_str(s);
+    }
+
+    pub fn push_escaped(&mut self, s: &str) {
+        self.inner.push_str(&Self::escape_html(s));
+    }
+
     pub fn push_char(&mut self, c: char) {
         self.inner.push(c);
     }

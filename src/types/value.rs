@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Value {
@@ -12,6 +13,29 @@ pub enum Value {
     Array(Vec<Value>),
     Object(IndexMap<String, Value>),
     Date(DateTime<Utc>),
+}
+
+impl Hash for Value {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            Value::Null => 0.hash(state),
+            Value::Bool(b) => b.hash(state),
+            Value::Num(n) => {
+                if n.is_nan() {
+                    0.hash(state);
+                } else {
+                    n.to_bits().hash(state);
+                }
+            }
+            Value::Str(s) => s.hash(state),
+            Value::Array(arr) => arr.hash(state),
+            Value::Object(obj) => obj
+                .iter()
+                .collect::<std::collections::VecDeque<_>>()
+                .hash(state),
+            Value::Date(dt) => dt.hash(state),
+        }
+    }
 }
 
 impl fmt::Display for Value {

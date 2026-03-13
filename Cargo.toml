@@ -21,6 +21,9 @@ sha2 = "0.10"
 md-5 = "0.10"
 uuid = { version = "1", features = ["v4"] }
 strsim = "0.11"
+rand = "0.8"
+urlencoding = "2"
+hex = "0.4"
 
 rayon = { version = "1", optional = true }
 
