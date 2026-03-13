@@ -48,6 +48,16 @@ pub enum Token {
     Whitespace(Span, String),
     Newline(Span),
     Eof(Span),
+    Plus(Span),
+    Minus(Span),
+    Star(Span),
+    Slash(Span),
+    Percent(Span),
+    LAngle(Span),
+    RAngle(Span),
+    Question(Span),
+    Dollar(Span),
+    Backtick(Span),
 }
 
 pub struct Lexer<'a> {
@@ -59,6 +69,8 @@ pub struct Lexer<'a> {
     start_pos: usize,
     start_line: u32,
     start_col: u32,
+    in_interpolation: bool,
+    brace_depth: u32,
 }
 
 impl<'a> Lexer<'a> {
@@ -72,6 +84,8 @@ impl<'a> Lexer<'a> {
             start_pos: 0,
             start_line: 1,
             start_col: 1,
+            in_interpolation: false,
+            brace_depth: 0,
         }
     }
 
@@ -252,6 +266,16 @@ impl<'a> Lexer<'a> {
                         || c == '='
                         || c == '"'
                         || c == '\''
+                        || c == '+'
+                        || c == '-'
+                        || c == '*'
+                        || c == '/'
+                        || c == '%'
+                        || c == '<'
+                        || c == '>'
+                        || c == '?'
+                        || c == '!'
+                        || c == '`'
                     {
                         break;
                     }
@@ -311,10 +335,9 @@ impl<'a> Lexer<'a> {
             let third = lookahead.next();
             let fourth = lookahead.next();
 
-            // eprintln!("DEBUG: c={:?}, second={:?}, third={:?}, fourth={:?}", c, second, third, fourth);
-
-            // We have {{
-            if second == Some('{') {
+            // When we're already inside an interpolation, don't treat { as start of {{
+            // Only check for {{ if we're at the top level
+            if !self.in_interpolation && second == Some('{') {
                 // Now check the fourth character (third position after opening)
                 // {{name}}  -> 0:{, 1:{, 2:n, 3:a...
                 // {{{name}} -> 0:{, 1:{, 2:{, 3:n...
@@ -337,6 +360,7 @@ impl<'a> Lexer<'a> {
                         // Handle {{
                         self.advance(); // first {
                         self.advance(); // second {
+                        self.in_interpolation = true;
                         return self.make_token(Token::OpenInterp(self.make_span()));
                     }
                 }
@@ -360,6 +384,7 @@ impl<'a> Lexer<'a> {
                         self.advance(); // }
                         self.advance(); // }
                         self.advance(); // -
+                        self.in_interpolation = false;
                         return self.make_token(Token::CloseComment(self.make_span()));
                     }
                     Some('}') => {
@@ -367,12 +392,14 @@ impl<'a> Lexer<'a> {
                         self.advance(); // }
                         self.advance(); // }
                         self.advance(); // }
+                        self.in_interpolation = false;
                         return self.make_token(Token::CloseRawInterp(self.make_span()));
                     }
                     _ => {
                         // Handle }}
                         self.advance(); // first }
                         self.advance(); // second }
+                        self.in_interpolation = false;
                         return self.make_token(Token::CloseInterp(self.make_span()));
                     }
                 }
@@ -450,6 +477,16 @@ impl<'a> Lexer<'a> {
             '.' => return self.make_token(Token::Dot(self.make_span())),
             ':' => return self.make_token(Token::Colon(self.make_span())),
             '=' => return self.make_token(Token::Equals(self.make_span())),
+            '+' => return self.make_token(Token::Plus(self.make_span())),
+            '-' => return self.make_token(Token::Minus(self.make_span())),
+            '*' => return self.make_token(Token::Star(self.make_span())),
+            '/' => return self.make_token(Token::Slash(self.make_span())),
+            '%' => return self.make_token(Token::Percent(self.make_span())),
+            '<' => return self.make_token(Token::LAngle(self.make_span())),
+            '>' => return self.make_token(Token::RAngle(self.make_span())),
+            '?' => return self.make_token(Token::Question(self.make_span())),
+            '$' => return self.make_token(Token::Dollar(self.make_span())),
+            '`' => return self.make_token(Token::Backtick(self.make_span())),
             _ => return self.make_token(Token::Text(self.make_span(), result)),
         }
     }
