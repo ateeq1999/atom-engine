@@ -2,9 +2,17 @@
 name = "atom-engine"
 version = "5.0.0"
 edition = "2021"
-description = "A component-oriented template engine built on Tera"
+description = "A component-oriented template engine built on Tera with props, slots, and provide/inject context"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/atom-engine/atom-engine"
+homepage = "https://github.com/atom-engine/atom-engine"
+documentation = "https://github.com/atom-engine/atom-engine#readme"
+keywords = ["template", "templating", "tera", "components", "jinja"]
+categories = ["template-engine", "web-development"]
+readme = "README.md"
+
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies]
 # Template engine base
