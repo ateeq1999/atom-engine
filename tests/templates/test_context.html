@@ -1,0 +1,14 @@
+{# Test: Context / Provide-Inject #}
+{# These values are provided via engine.provide() #}
+Provided Key: {{ __context.app_name }}
+Provided Version: {{ __context.version }}
+Provided Config: {{ __context.config.theme }}
+
+{# Nested access #}
+{% if __context.user %}
+User: {{ __context.user.name }}
+Role: {{ __context.user.role }}
+{% endif %}
+
+{# Environment variables via function #}
+{# env("PATH") #}

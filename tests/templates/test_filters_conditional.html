@@ -1,0 +1,12 @@
+{# Test: Conditional Filters #}
+Default (null): {{ null_value | default(value="fallback") }}
+Default (empty): {{ "" | default(value="fallback") }}
+Default (value): {{ "actual" | default(value="fallback") }}
+When (true): {{ true | when(then="yes", else="no") }}
+When (false): {{ false | when(then="yes", else="no") }}
+Coalesce: {{ null_value | coalesce(other=fallback_value) }}
+Defined: {{ defined_var | defined }}
+Undefined: {{ undefined_var | undefined }}
+Empty (array): {{ [] | empty }}
+Empty (string): {{ "" | empty }}
+Not empty (array): {{ [1] | not_empty }}

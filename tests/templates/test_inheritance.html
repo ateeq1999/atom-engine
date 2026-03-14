@@ -1,0 +1,28 @@
+{# Test: Template Inheritance - Child #}
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    body { font-family: sans-serif; }
+</style>
+{% endblock %}
+
+{% block header %}
+<nav>
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<article>
+    <h1>{{ article_title }}</h1>
+    <p>{{ article_content }}</p>
+</article>
+{% endblock %}
+
+{% block footer %}
+<p>&copy; 2024 {{ site_name }}</p>
+{% endblock %}

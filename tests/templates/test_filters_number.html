@@ -1,0 +1,13 @@
+{# Test: Number Filters #}
+Round (default): {{ 3.7 | round }}
+Round (precision=1): {{ 3.14159 | round(precision=1) }}
+Round (precision=2): {{ 3.14159 | round(precision=2) }}
+Abs: {{ -42 | abs }}
+Format (default): {{ 1234567 | format }}
+Format (underscore): {{ 1234567 | format(format="_") }}
+Min: {{ numbers | min }}
+Max: {{ numbers | max }}
+Sum: {{ numbers | sum }}
+Avg: {{ numbers | avg }}
+Ceil: {{ 3.1 | ceil }}
+Floor: {{ 3.9 | floor }}

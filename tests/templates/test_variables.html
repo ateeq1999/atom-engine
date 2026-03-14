@@ -1,0 +1,11 @@
+{# Test: Core Variable Features #}
+{# This tests variable interpolation, comments, and whitespace control #}
+Variable: {{ name }}
+Uppercase: {{ name | upper }}
+Lowercase: {{ name | lower }}
+Number: {{ count }}
+Boolean: {{ is_active }}
+Null: {{ nullable | default(value="fallback") }}
+Array: {{ items | join(", ") }}
+Object: {{ user.name }}, {{ user.email }}
+Nested: {{ company.address.city }}

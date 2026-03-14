@@ -178,3 +178,198 @@ pub fn shuffle(value: &Value, _: &HashMap<String, Value>) -> FilterResult {
         Ok(value.clone())
     }
 }
+
+pub fn map_filter(value: &Value, args: &HashMap<String, Value>) -> FilterResult {
+    let arr = value
+        .as_array()
+        .ok_or_else(|| Error::msg("Expected array"))?;
+    let prop = args.get("prop").and_then(|v| v.as_str()).unwrap_or("value");
+    let transform = args.get("transform").and_then(|v| v.as_str());
+
+    #[allow(clippy::needless_borrows_for_generic_args)]
+    let result: Vec<Value> = arr
+        .iter()
+        .map(|item| {
+            if let Some(transform_fn) = transform {
+                match transform_fn {
+                    "upper" => {
+                        if let Some(v) = item.get(&prop) {
+                            Value::String(v.as_str().unwrap_or("").to_uppercase())
+                        } else {
+                            item.clone()
+                        }
+                    }
+                    "lower" => {
+                        if let Some(v) = item.get(&prop) {
+                            Value::String(v.as_str().unwrap_or("").to_lowercase())
+                        } else {
+                            item.clone()
+                        }
+                    }
+                    "length" => {
+                        if let Some(v) = item.get(&prop) {
+                            Value::Number(v.as_array().map(|a| a.len()).unwrap_or(0).into())
+                        } else {
+                            Value::Number(0.into())
+                        }
+                    }
+                    _ => item.get(&prop).cloned().unwrap_or(Value::Null),
+                }
+            } else {
+                item.get(&prop).cloned().unwrap_or(Value::Null)
+            }
+        })
+        .collect();
+
+    Ok(Value::Array(result))
+}
+
+pub fn filter_filter(value: &Value, args: &HashMap<String, Value>) -> FilterResult {
+    let arr = value
+        .as_array()
+        .ok_or_else(|| Error::msg("Expected array"))?;
+    let key = args.get("key").and_then(|v| v.as_str());
+    let value_filter = args.get("value").cloned();
+    let op = args.get("op").and_then(|v| v.as_str()).unwrap_or("eq");
+
+    let result: Vec<Value> = arr
+        .iter()
+        .filter(|item| {
+            if let (Some(k), Some(fv)) = (key, &value_filter) {
+                let item_val = item.get(k);
+                match op {
+                    "eq" => item_val == Some(fv),
+                    "ne" => item_val != Some(fv),
+                    "gt" => {
+                        if let (Some(iv), Some(f)) =
+                            (item_val.and_then(|v| v.as_f64()), fv.as_f64())
+                        {
+                            iv > f
+                        } else {
+                            false
+                        }
+                    }
+                    "gte" => {
+                        if let (Some(iv), Some(f)) =
+                            (item_val.and_then(|v| v.as_f64()), fv.as_f64())
+                        {
+                            iv >= f
+                        } else {
+                            false
+                        }
+                    }
+                    "lt" => {
+                        if let (Some(iv), Some(f)) =
+                            (item_val.and_then(|v| v.as_f64()), fv.as_f64())
+                        {
+                            iv < f
+                        } else {
+                            false
+                        }
+                    }
+                    "lte" => {
+                        if let (Some(iv), Some(f)) =
+                            (item_val.and_then(|v| v.as_f64()), fv.as_f64())
+                        {
+                            iv <= f
+                        } else {
+                            false
+                        }
+                    }
+                    "contains" => {
+                        if let Some(iv) = item_val {
+                            iv.to_string().contains(&fv.to_string())
+                        } else {
+                            false
+                        }
+                    }
+                    "exists" => item.is_object() && item.get(k).is_some(),
+                    _ => item_val == Some(fv),
+                }
+            } else {
+                !item.is_null() && !item.as_array().map(|a| a.is_empty()).unwrap_or(false)
+            }
+        })
+        .cloned()
+        .collect();
+
+    Ok(Value::Array(result))
+}
+
+pub fn each_filter(value: &Value, args: &HashMap<String, Value>) -> FilterResult {
+    let arr = value
+        .as_array()
+        .ok_or_else(|| Error::msg("Expected array"))?;
+    let include_index = args.get("index").and_then(|v| v.as_bool()).unwrap_or(false);
+
+    if include_index {
+        let result: Vec<Value> = arr
+            .iter()
+            .enumerate()
+            .map(|(i, v)| serde_json::json!({"index": i, "value": v, "first": i == 0, "last": i == arr.len() - 1}))
+            .collect();
+        Ok(Value::Array(result))
+    } else {
+        Ok(Value::Array(arr.clone()))
+    }
+}
+
+pub fn reduce_filter(value: &Value, args: &HashMap<String, Value>) -> FilterResult {
+    let arr = value
+        .as_array()
+        .ok_or_else(|| Error::msg("Expected array"))?;
+    let initial = args.get("initial").cloned().unwrap_or(Value::Null);
+    let prop = args.get("prop").and_then(|v| v.as_str());
+
+    let result = arr.iter().fold(initial, |acc, item| {
+        if let Some(p) = prop {
+            if let Some(v) = item.get(p) {
+                if let (Some(a), Some(b)) = (acc.as_f64(), v.as_f64()) {
+                    return serde_json::json!(a + b);
+                }
+            }
+        }
+        acc
+    });
+
+    Ok(result)
+}
+
+pub fn flatten_filter(value: &Value, _: &HashMap<String, Value>) -> FilterResult {
+    if let Some(arr) = value.as_array() {
+        let mut result = Vec::new();
+        for item in arr {
+            if let Some(inner) = item.as_array() {
+                for i in inner {
+                    result.push(i.clone());
+                }
+            } else {
+                result.push(item.clone());
+            }
+        }
+        Ok(Value::Array(result))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+pub fn partition_filter(value: &Value, args: &HashMap<String, Value>) -> FilterResult {
+    let arr = value
+        .as_array()
+        .ok_or_else(|| Error::msg("Expected array"))?;
+    let key = args.get("key").and_then(|v| v.as_str());
+    let value_filter = args.get("value").cloned();
+
+    let (matched, rest): (Vec<&Value>, Vec<&Value>) = arr.iter().partition(|item| {
+        if let (Some(k), Some(fv)) = (key, &value_filter) {
+            item.get(k) == Some(fv)
+        } else {
+            !item.is_null()
+        }
+    });
+
+    Ok(serde_json::json!({
+        "matched": matched.iter().map(|v| (*v).clone()).collect::<Vec<_>>(),
+        "rest": rest.iter().map(|v| (*v).clone()).collect::<Vec<_>>()
+    }))
+}

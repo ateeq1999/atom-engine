@@ -1,0 +1,31 @@
+{# Test: Conditionals #}
+{# Basic if #}
+{% if show %}visible{% endif %}
+
+{# If-else #}
+{% if is_active %}active{% else %}inactive{% endif %}
+
+{# If-elif-else #}
+{% if status == "pending" %}
+  Status: Pending
+{% elif status == "approved" %}
+  Status: Approved
+{% else %}
+  Status: Unknown
+{% endif %}
+
+{# Boolean operators #}
+{% if is_active and is_verified %}verified active{% endif %}
+{% if is_admin or is_editor %}can edit{% endif %}
+{% if not is_banned %}not banned{% endif %}
+
+{# Comparison operators #}
+{% if count > 10 %}more than 10{% endif %}
+{% if count < 5 %}less than 5{% endif %}
+{% if count >= 3 %}at least 3{% endif %}
+{% if count <= 100 %}at most 100{% endif %}
+{% if name == "admin" %}is admin{% endif %}
+{% if role != "guest" %}not guest{% endif %}
+
+{# Ternary #}
+{{ is_enabled | when(then="ON", else="OFF") }}

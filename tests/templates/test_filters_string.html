@@ -1,0 +1,23 @@
+{# Test: String Filters #}
+Upper: {{ "hello" | upper }}
+Lower: {{ "HELLO" | lower }}
+Capitalize: {{ "hello world" | capitalize }}
+Title: {{ "hello world" | title }}
+Camel: {{ "hello_world" | camel_case }}
+Pascal: {{ "hello_world" | pascal_case }}
+Snake: {{ "helloWorld" | snake_case }}
+Kebab: {{ "helloWorld" | kebab_case }}
+Truncate: {{ "Hello World" | truncate(length=5) }}
+Slugify: {{ "Hello World! 123" | slugify }}
+Pluralize: {{ 1 | pluralize }} / {{ 2 | pluralize }}
+Replace: {{ "Hello World" | replace(old="World", new="Rust") }}
+Remove: {{ "Hello World" | remove(string="o") }}
+Prepend: {{ "World" | prepend(string="Hello ") }}
+Append: {{ "Hello" | append(string=" World") }}
+Strip: {{ "  hello world  " | strip }}
+Nl2br: {{ "line1\nline2" | nl2br | safe }}
+Word count: {{ "hello world foo bar" | word_count }}
+Char count: {{ "hello" | char_count }}
+Starts with: {{ "hello" | starts_with(prefix="hel") }}
+Ends with: {{ "hello" | ends_with(suffix="llo") }}
+Contains: {{ "hello world" | contains(substring="world") }}

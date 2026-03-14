@@ -1,0 +1,50 @@
+{# Test: Global Functions #}
+{# Dump - debug output to stderr #}
+{# {% call dump(var=myvar) %} #}
+
+{# Log - log to stderr #}
+{# {% call log(message="Hello") %} #}
+
+{# Range - generate array #}
+Range 0-5: {{ range(end=5) | join(", ") }}
+Range 1-10 step 2: {{ range(start=1, end=10, step_by=2) | join(", ") }}
+
+{# Now - current datetime #}
+Now: {{ now() }}
+Now UTC: {{ now(utc=true) }}
+Now timestamp: {{ now(timestamp=true) }}
+
+{# UUID - generate UUID #}
+UUID: {{ uuid() }}
+
+{# Random - random number #}
+Random 1-100: {{ random(min=1, max=100) }}
+
+{# Choice - random array item #}
+Choice: {{ choice(array=["a", "b", "c"]) }}
+
+{# File exists #}
+{# File exists: {{ file_exists(path="Cargo.toml") }} #}
+
+{# Env #}
+{# Env HOME: {{ env(key="HOME") }} #}
+
+{# MD5 hash #}
+MD5 "hello": {{ md5(string="hello") }}
+
+{# SHA256 hash #}
+SHA256 "hello": {{ sha256(string="hello") }}
+
+{# Repeat #}
+Repeat "ab" 3x: {{ repeat(content="ab", count=3) }}
+Repeat with separator: {{ repeat(content="ab", count=3, separator="-") }}
+
+{# Times #}
+Times 5: {{ times(times=5) | join(", ") }}
+Times with start: {{ times(times=3, start=1, step=2) | join(", ") }}
+
+{# Loop #}
+Loop 1-5: {{ loop(from=1, to=5, step=1) | map(prop="value") | join(", ") }}
+
+{# Iterate #}
+Iterate array: {{ iterate(array=[1,2,3,4,5], limit=3) | map(prop="value") | join(", ") }}

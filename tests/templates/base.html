@@ -1,0 +1,17 @@
+{# Test: Template Inheritance - Base #}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}Default Title{% endblock %}</title>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header>{% block header %}Header{% endblock %}</header>
+    <main>
+        {% block content %}
+        <p>Default content</p>
+        {% endblock %}
+    </main>
+    <footer>{% block footer %}Footer{% endblock %}</footer>
+</body>
+</html>

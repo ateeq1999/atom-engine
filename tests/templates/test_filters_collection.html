@@ -1,0 +1,15 @@
+{# Test: Collection Filters #}
+First: {{ items | first }}
+Last: {{ items | last }}
+Length: {{ items | length }}
+Reverse: {{ items | reverse | join(", ") }}
+Sort: {{ numbers | sort | join(", ") }}
+Group by: 
+{%- for group in users | group_by(attribute="role") -%}
+  {{ group.key }}: {% for u in group.value %}{{ u.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+{%- endfor %}
+Where: {{ users | where(attribute="active") | pluck(attribute="name") | join(", ") }}
+Join: {{ items | join(" | ") }}
+Slice: {{ items | slice(start=1, length=2) | join(", ") }}
+Uniq: {{ items | uniq | join(", ") }}
+Shuffle: {{ items | shuffle | join(", ") }}

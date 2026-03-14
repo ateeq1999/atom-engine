@@ -181,3 +181,197 @@ impl Function for Sha256Fn {
         Ok(Value::String(hex::encode(result)))
     }
 }
+
+pub struct RepeatFn;
+
+impl Function for RepeatFn {
+    fn call(&self, args: &HashMap<String, Value>) -> FilterResult {
+        let count = args.get("count").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
+        let content = args.get("content").and_then(|v| v.as_str()).unwrap_or("");
+        let separator = args.get("separator").and_then(|v| v.as_str()).unwrap_or("");
+
+        let result: Vec<String> = (0..count).map(|_| content.to_string()).collect();
+        Ok(Value::String(result.join(separator)))
+    }
+}
+
+pub struct TimesFn;
+
+impl Function for TimesFn {
+    fn call(&self, args: &HashMap<String, Value>) -> FilterResult {
+        let times = args.get("times").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
+        let start = args.get("start").and_then(|v| v.as_i64()).unwrap_or(1);
+        let step = args.get("step").and_then(|v| v.as_i64()).unwrap_or(1);
+
+        let result: Vec<Value> = (0..times)
+            .map(|i| json!(start + (i as i64) * step))
+            .collect();
+        Ok(Value::Array(result))
+    }
+}
+
+pub struct LoopFn;
+
+impl Function for LoopFn {
+    fn call(&self, args: &HashMap<String, Value>) -> FilterResult {
+        let from = args.get("from").and_then(|v| v.as_i64()).unwrap_or(0);
+        let to = args.get("to").and_then(|v| v.as_i64()).unwrap_or(10);
+        let step = args.get("step").and_then(|v| v.as_i64()).unwrap_or(1);
+        let include = args
+            .get("inclusive")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        let end = if include { to + 1 } else { to };
+
+        let result: Vec<Value> = (from..end)
+            .step_by(step as usize)
+            .map(|i| json!({"index": i, "value": i}))
+            .collect();
+        Ok(Value::Array(result))
+    }
+}
+
+pub struct IterateFn;
+
+impl Function for IterateFn {
+    fn call(&self, args: &HashMap<String, Value>) -> FilterResult {
+        let array = args
+            .get("array")
+            .ok_or_else(|| Error::msg("Missing array"))?;
+        let arr = array
+            .as_array()
+            .ok_or_else(|| Error::msg("Expected array"))?;
+        let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+        let skip = args.get("skip").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+
+        let iter: Vec<Value> = arr
+            .iter()
+            .skip(skip)
+            .take(if limit > 0 { limit } else { arr.len() })
+            .enumerate()
+            .map(|(i, v)| serde_json::json!({"index": i, "value": v, "key": i}))
+            .collect();
+        Ok(Value::Array(iter))
+    }
+}
+
+pub struct ObjectFn;
+
+impl Function for ObjectFn {
+    fn call(&self, args: &HashMap<String, Value>) -> FilterResult {
+        let keys = args
+            .get("keys")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+        let values = args
+            .get("values")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        let mut obj = serde_json::Map::new();
+        for (i, key) in keys.iter().enumerate() {
+            if let Some(k) = key.as_str() {
+                let v = values.get(i).cloned().unwrap_or(Value::Null);
+                obj.insert(k.to_string(), v);
+            }
+        }
+        Ok(Value::Object(obj))
+    }
+}
+
+pub struct MergeFn;
+
+impl Function for MergeFn {
+    fn call(&self, args: &HashMap<String, Value>) -> FilterResult {
+        let arr1 = args
+            .get("array1")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+        let arr2 = args
+            .get("array2")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        let mut result = arr1;
+        result.extend(arr2);
+        Ok(Value::Array(result))
+    }
+}
+
+pub struct ChunkFn;
+
+impl Function for ChunkFn {
+    fn call(&self, args: &HashMap<String, Value>) -> FilterResult {
+        let array = args
+            .get("array")
+            .ok_or_else(|| Error::msg("Missing array"))?;
+        let arr = array
+            .as_array()
+            .ok_or_else(|| Error::msg("Expected array"))?;
+        let size = args.get("size").and_then(|v| v.as_u64()).unwrap_or(2) as usize;
+
+        let chunks: Vec<Value> = arr
+            .chunks(size)
+            .map(|chunk| Value::Array(chunk.to_vec()))
+            .collect();
+        Ok(Value::Array(chunks))
+    }
+}
+
+pub struct ZipFn;
+
+impl Function for ZipFn {
+    fn call(&self, args: &HashMap<String, Value>) -> FilterResult {
+        let arrays = args
+            .get("arrays")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        if arrays.is_empty() {
+            return Ok(Value::Array(Vec::new()));
+        }
+
+        let max_len = arrays
+            .iter()
+            .map(|a| a.as_array().map(|a| a.len()).unwrap_or(0))
+            .max()
+            .unwrap_or(0);
+
+        let result: Vec<Value> = (0..max_len)
+            .map(|i| {
+                let items: Vec<Value> = arrays
+                    .iter()
+                    .filter_map(|a| a.as_array().and_then(|arr| arr.get(i).cloned()))
+                    .collect();
+                Value::Array(items)
+            })
+            .collect();
+        Ok(Value::Array(result))
+    }
+}
+
+pub struct CompactFn;
+
+impl Function for CompactFn {
+    fn call(&self, args: &HashMap<String, Value>) -> FilterResult {
+        let array = args
+            .get("array")
+            .ok_or_else(|| Error::msg("Missing array"))?;
+        let arr = array
+            .as_array()
+            .ok_or_else(|| Error::msg("Expected array"))?;
+
+        let result: Vec<Value> = arr
+            .iter()
+            .filter(|v| !v.is_null() && !v.as_array().map(|a| a.is_empty()).unwrap_or(false))
+            .cloned()
+            .collect();
+        Ok(Value::Array(result))
+    }
+}

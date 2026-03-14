@@ -77,6 +77,12 @@ impl Atom {
         tera.register_filter("slice", filters::slice);
         tera.register_filter("uniq", filters::uniq);
         tera.register_filter("shuffle", filters::shuffle);
+        tera.register_filter("map", filters::map_filter);
+        tera.register_filter("filter", filters::filter_filter);
+        tera.register_filter("each", filters::each_filter);
+        tera.register_filter("reduce", filters::reduce_filter);
+        tera.register_filter("flatten", filters::flatten_filter);
+        tera.register_filter("partition", filters::partition_filter);
 
         // Number filters
         tera.register_filter("round", filters::round);
@@ -135,6 +141,15 @@ impl Atom {
         tera.register_function("env", filters::EnvFn);
         tera.register_function("md5", filters::Md5Fn);
         tera.register_function("sha256", filters::Sha256Fn);
+        tera.register_function("repeat", filters::RepeatFn);
+        tera.register_function("times", filters::TimesFn);
+        tera.register_function("loop", filters::LoopFn);
+        tera.register_function("iterate", filters::IterateFn);
+        tera.register_function("object", filters::ObjectFn);
+        tera.register_function("merge", filters::MergeFn);
+        tera.register_function("chunk", filters::ChunkFn);
+        tera.register_function("zip", filters::ZipFn);
+        tera.register_function("compact", filters::CompactFn);
 
         // Component functions
         tera.register_function("push", filters::PushFn);

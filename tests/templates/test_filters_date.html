@@ -1,0 +1,5 @@
+{# Test: Date Filter #}
+Current date: {{ now() | date }}
+Current date (custom): {{ now() | date(format="%Y-%m-%d %H:%M") }}
+Timestamp: {{ now(timestamp=true) }}
+UTC: {{ now(utc=true) }}

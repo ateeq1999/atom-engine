@@ -1,0 +1,57 @@
+{# Test: Loops #}
+{# Basic for loop #}
+{%- for item in items -%}
+{{ item }},
+{%- endfor -%}
+
+{# For loop with index #}
+{%- for item in items -%}
+{{ loop.index }}:{{ item }}{% if not loop.last %},{% endif %}
+{%- endfor -%}
+
+{# For loop with index0 #}
+{%- for item in items -%}
+{{ loop.index0 }}:{{ item }}{% if not loop.last %},{% endif %}
+{%- endfor -%}
+
+{# First and last #}
+{%- for item in items -%}
+{% if loop.first %}FIRST{% endif %}{% if loop.last %}LAST{% endif %}{{ item }}
+{%- endfor -%}
+
+{# Loop length #}
+Total: {{ loop.length }}
+
+{# Range loop #}
+{%- for i in range(end=5) -%}
+{{ i }},
+{%- endfor -%}
+
+{# Range with start and step #}
+{%- for i in range(start=1, end=10, step_by=2) -%}
+{{ i }},
+{%- endfor -%}
+
+{# Nested loops #}
+{%- for outer in items -%}
+{%- for inner in items -%}
+{{ outer }}-{{ inner }}
+{%- endfor -%}
+{%- endfor -%}
+
+{# Empty handling #}
+{%- for item in empty_items -%}
+{{ item }}
+{%- empty -%}
+No items found
+{%- endfor -%}
+
+{# Using @loop function #}
+{%- for item in loop(from=1, to=5, step=1) -%}
+{{ item.value }},
+{%- endfor -%}
+
+{# Using @times function #}
+{%- for item in times(times=3) -%}
+{{ item }},
+{%- endfor -%}

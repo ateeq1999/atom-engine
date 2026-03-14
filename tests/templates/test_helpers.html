@@ -1,0 +1,43 @@
+{# Test: Helper Macros / Directives #}
+{# @map - transform array elements #}
+Map users to names: {{ users | map(prop="name") | join(", ") }}
+Map with transform upper: {{ users | map(prop="name", transform="upper") | join(", ") }}
+Map with transform lower: {{ users | map(prop="name", transform="lower") | join(", ") }}
+
+{# @filter - filter array elements #}
+Filter active users: {{ users | filter(key="active", value=true) | map(prop="name") | join(", ") }}
+Filter by role: {{ users | filter(key="role", value="admin") | map(prop="name") | join(", ") }}
+Filter greater than: {{ numbers | filter(key="value", value=5, op="gte") | join(", ") }}
+
+{# @each - iterate with index #}
+Each with index: 
+{%- for item in items | each(index=true) -%}
+  {{ item.index }}: {{ item.value }}{% if not loop.last %},{% endif %}
+{%- endfor -%}
+
+{# @reduce - reduce to single value #}
+Reduce sum: {{ numbers | reduce(prop="value", initial=0) }}
+Reduce (implicit): {{ [1,2,3,4,5] | reduce(initial=0) }}
+
+{# flatten - flatten nested arrays #}
+Flatten: {{ [[1,2], [3,4], [5]] | flatten | join(", ") }}
+
+{# partition - split array into two #}
+{% set partitioned = users | partition(key="active") %}
+Matched: {{ partitioned.matched | map(prop="name") | join(", ") }}
+Rest: {{ partitioned.rest | map(prop="name") | join(", ") }}
+
+{# Object - create object from keys/values #}
+Object: {{ object(keys=["a", "b", "c"], values=[1, 2, 3]) }}
+
+{# Merge - merge arrays #}
+Merge: {{ merge(array1=[1,2], array2=[3,4]) | join(", ") }}
+
+{# Chunk - split array into chunks #}
+Chunk: {{ [1,2,3,4,5,6] | chunk(size=2) }}
+
+{# Zip - combine arrays #}
+Zip: {{ zip(arrays=[[1,2,3], ["a","b","c"]]) }}
+
+{# Compact - remove nulls/empties #}
+Compact: {{ compact(array=[1, null, 2, "", 3]) | join(", ") }}

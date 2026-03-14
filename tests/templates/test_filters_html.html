@@ -1,0 +1,4 @@
+{# Test: HTML Filters #}
+Escape HTML: {{ "<script>alert('xss')</script>" | escape_html }}
+Safe (no escape): {{ "<b>bold</b>" | safe }}
+Strip tags: {{ "<p>Hello <b>World</b></p>" | strip_tags }}

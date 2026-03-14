@@ -1,0 +1,25 @@
+{# Test: Macros #}
+{% macro button(text, type="primary") %}
+<button class="btn btn-{{ type }}">{{ text }}</button>
+{% endmacro %}
+
+{% macro input(name, type="text", placeholder="") %}
+<input type="{{ type }}" name="{{ name }}" placeholder="{{ placeholder }}">
+{% endmacro %}
+
+{% macro card(title, content) %}
+<div class="card">
+    <h3>{{ title }}</h3>
+    <div class="card-body">{{ content }}</div>
+</div>
+{% endmacro %}
+
+{# Using macros #}
+{{ button("Click Me") }}
+{{ button("Submit", type="success") }}
+{{ button("Cancel", type="danger") }}
+
+{{ input("username", placeholder="Enter username") }}
+{{ input("email", type="email", placeholder="Enter email") }}
+
+{{ card("Welcome", "This is the card content") }}

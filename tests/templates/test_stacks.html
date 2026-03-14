@@ -1,0 +1,16 @@
+{# Test: Stack System #}
+{# Push to stack #}
+{% call push(name="scripts", content="<script>console.log('a')</script>") %}
+{% call push(name="scripts", content="<script>console.log('b')</script>") %}
+{% call push(name="scripts", content="<script>console.log('c')</script>") %}
+
+{# Prepend to stack #}
+{% call prepend(name="styles", content="<link rel='stylesheet' href='a.css'>") %}
+{% call prepend(name="styles", content="<link rel='stylesheet' href='b.css'>") %}
+
+{# Render stacks #}
+Scripts:
+{{ "scripts" | stack }}
+
+Styles:
+{{ "styles" | stack }}

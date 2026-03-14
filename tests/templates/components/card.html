@@ -1,0 +1,27 @@
+{# Test: Components - Card Component #}
+{%-- atom: @props(title:String, collapsible:Boolean=false) --%}
+<div class="card">
+    <div class="card-header">
+        <h3>{{ title }}</h3>
+        {% if collapsible %}
+        <button class="toggle">+</button>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if $slots.default %}
+            {{ $slots.default() }}
+        {% else %}
+            <p>No content provided</p>
+        {% endif %}
+    </div>
+    {% if $slots.footer %}
+    <div class="card-footer">
+        {{ $slots.footer() }}
+    </div>
+    {% endif %}
+</div>
+
+{# Usage: #}
+{# {% component("card", {title: "My Card"}) %} #}
+{#     This is the card content #}
+{# {% endcomponent %} #}
