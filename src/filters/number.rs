@@ -36,11 +36,11 @@ pub fn format_number(value: &Value, args: &HashMap<String, Value>) -> FilterResu
         .chars()
         .rev()
         .enumerate()
-        .filter_map(|(i, c)| {
+        .map(|(i, c)| {
             if i > 0 && i % 3 == 0 {
-                Some(format!("{}{}", format, c))
+                format!("{}{}", format, c)
             } else {
-                Some(c.to_string())
+                c.to_string()
             }
         })
         .collect::<Vec<_>>()

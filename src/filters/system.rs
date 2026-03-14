@@ -79,6 +79,12 @@ impl CycleFn {
     }
 }
 
+impl Default for CycleFn {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Function for CycleFn {
     fn call(&self, args: &HashMap<String, Value>) -> FilterResult {
         let values: Vec<Value> = (0..)

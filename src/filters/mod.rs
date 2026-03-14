@@ -19,3 +19,17 @@ pub use html::*;
 pub use number::*;
 pub use string::*;
 pub use system::*;
+
+pub struct Filters;
+
+impl Filters {
+    pub fn new() -> Self {
+        Filters
+    }
+}
+
+impl Default for Filters {
+    fn default() -> Self {
+        Self::new()
+    }
+}

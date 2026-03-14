@@ -28,6 +28,50 @@ pub fn stack_filter(name: &Value, _: &HashMap<String, Value>) -> FilterResult {
         .unwrap_or(Value::String(String::new())))
 }
 
+pub fn scoped_slot_filter(args: &Value, _: &HashMap<String, Value>) -> FilterResult {
+    let slot_name = args
+        .get("slot")
+        .and_then(|v| v.as_str())
+        .unwrap_or("default");
+    let data_key = args.get("key").and_then(|v| v.as_str()).unwrap_or("item");
+    let default_value = args.get("default");
+
+    let _slot_key = format!("__scoped_slot_{}", slot_name);
+    let data_key_full = format!("__scoped_data_{}_{}", slot_name, data_key);
+
+    if let Some(data) = args.get(&data_key_full) {
+        return Ok(data.clone());
+    }
+
+    Ok(default_value.cloned().unwrap_or(Value::Null))
+}
+
+pub fn with_scoped_data_filter(args: &Value, _: &HashMap<String, Value>) -> FilterResult {
+    let slot_name = args
+        .get("slot")
+        .and_then(|v| v.as_str())
+        .unwrap_or("default");
+    let data = args.get("data").cloned().unwrap_or(Value::Null);
+
+    let mut result = json!({
+        "slot": slot_name,
+        "data": data,
+    });
+
+    if let Some(obj) = result.as_object_mut() {
+        if let Some(data_obj) = data.as_object() {
+            for (key, value) in data_obj {
+                obj.insert(
+                    format!("__scoped_data_{}_{}", slot_name, key),
+                    value.clone(),
+                );
+            }
+        }
+    }
+
+    Ok(result)
+}
+
 pub struct PushFn;
 
 impl Function for PushFn {

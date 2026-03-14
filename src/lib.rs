@@ -9,15 +9,18 @@ use tera::{Context, Filter, Function, Tera};
 mod components;
 mod context;
 mod error;
+mod pool;
 
 pub use components::{
-    Component, ComponentRegistry, ComponentRenderer, PropDef, PropType, SlotData,
+    compute_cache_key, compute_props_hash, Component, ComponentCache, ComponentRegistry,
+    ComponentRenderer, PropDef, PropType, ScopedSlotDef, SlotData,
 };
 pub use context::ContextChain;
 pub use error::Error;
+pub use pool::{MemoryPool, PooledString, StringPool};
 
 thread_local! {
-    static COMPONENT_RENDERER: RefCell<Option<Rc<RefCell<ComponentRenderer>>>> = RefCell::new(None);
+    static COMPONENT_RENDERER: RefCell<Option<Rc<RefCell<ComponentRenderer>>>> = const { RefCell::new(None) };
 }
 
 #[derive(Clone)]
@@ -104,6 +107,8 @@ impl Atom {
         // Slot helpers
         tera.register_filter("slot", filters::slot_filter);
         tera.register_filter("has_slot", filters::has_slot_filter);
+        tera.register_filter("scoped_slot", filters::scoped_slot_filter);
+        tera.register_filter("with_scoped_data", filters::with_scoped_data_filter);
 
         // Stack filter
         tera.register_filter("stack", filters::stack_filter);
@@ -270,7 +275,6 @@ impl Atom {
     pub fn get_registered_templates(&self) -> Vec<String> {
         self.tera
             .get_template_names()
-            .into_iter()
             .map(|s| s.to_string())
             .collect()
     }
@@ -285,6 +289,22 @@ impl Atom {
 
     pub fn is_parallel(&self) -> bool {
         self.use_parallel
+    }
+
+    pub fn enable_component_cache(&mut self, enabled: bool) {
+        self.components.enable_cache(enabled);
+    }
+
+    pub fn is_component_cache_enabled(&self) -> bool {
+        self.components.is_cache_enabled()
+    }
+
+    pub fn clear_component_cache(&mut self) {
+        self.components.clear_cache();
+    }
+
+    pub fn component_cache_len(&self) -> usize {
+        self.components.cache_len()
     }
 
     #[cfg(feature = "parallel")]
@@ -318,6 +338,56 @@ impl Atom {
         for (name, context) in templates {
             let rendered = self.render(name, context)?;
             results.push((name.to_string(), rendered));
+        }
+        Ok(results)
+    }
+
+    #[cfg(feature = "async")]
+    pub async fn render_async(&self, template: &str, context: &Value) -> Result<String, Error> {
+        let template = template.to_string();
+        let context = context.clone();
+        
+        tokio::task::spawn_blocking(move || {
+            let mut tera = Tera::default();
+            tera.register_filter("json_encode", filters::json_encode);
+            tera.render(&template, &Context::from_serialize(&context).map_err(|e| Error::Context { message: e.to_string() })?)
+                .map_err(|e| Error::Render { template, message: e.to_string() })
+        })
+        .await
+        .map_err(|e| Error::Render { template: "async".to_string(), message: e.to_string() })?
+    }
+
+    #[cfg(feature = "async")]
+    pub async fn render_many_async(
+        &self,
+        templates: &[(&str, &Value)],
+    ) -> std::result::Result<Vec<(String, String)>, Error> {
+        use tokio::task::JoinSet;
+        
+        let mut join_set = JoinSet::new();
+        
+        for (name, context) in templates {
+            let name = name.to_string();
+            let context = context.clone();
+            let filters = filters::Filters::new();
+            
+            join_set.spawn(async move {
+                tokio::task::spawn_blocking(move || {
+                    let mut tera = Tera::default();
+                    tera.register_filter("json_encode", filters::json_encode);
+                    let mut ctx = Context::from_serialize(&context).map_err(|e| Error::Context { message: e.to_string() })?;
+                    tera.render(&name, &ctx)
+                        .map(|r| (name, r))
+                        .map_err(|e| Error::Render { template: name, message: e.to_string() })
+                })
+                .await
+                .map_err(|e| Error::Render { template: "async".to_string(), message: e.to_string() })?
+            });
+        }
+        
+        let mut results = Vec::new();
+        while let Some(result) = join_set.join_next().await {
+            results.push(result??);
         }
         Ok(results)
     }

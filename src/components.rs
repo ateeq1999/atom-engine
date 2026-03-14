@@ -1,9 +1,25 @@
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
 use indexmap::IndexMap;
 use serde_json::Value;
 
 use crate::error::Result;
+
+pub fn compute_props_hash(props: &Value) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    let json_str = serde_json::to_string(props).unwrap_or_default();
+    json_str.hash(&mut hasher);
+    hasher.finish()
+}
+
+pub fn compute_cache_key(path: &str, props_hash: u64) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    path.hash(&mut hasher);
+    props_hash.hash(&mut hasher);
+    hasher.finish()
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum PropType {
@@ -16,6 +32,7 @@ pub enum PropType {
 }
 
 impl PropType {
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "string" => PropType::String,
@@ -78,12 +95,20 @@ pub struct Component {
     pub template: String,
     pub slots: Vec<String>,
     pub optional_slots: Vec<String>,
+    pub scoped_slots: Vec<ScopedSlotDef>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ScopedSlotDef {
+    pub name: String,
+    pub props: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct SlotData {
     pub fills: IndexMap<String, String>,
     pub default: Option<String>,
+    pub scoped_data: HashMap<String, Value>,
 }
 
 #[derive(Clone, Default)]
@@ -105,14 +130,14 @@ impl ComponentRenderer {
     pub fn push(&mut self, name: &str, content: String) {
         self.stack_buffers
             .entry(name.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(content);
     }
 
     pub fn prepend(&mut self, name: &str, content: String) {
         self.stack_buffers
             .entry(name.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .insert(0, content);
     }
 
@@ -129,10 +154,7 @@ impl ComponentRenderer {
 
     pub fn set_slot_fill(&mut self, slot_name: &str, content: String) {
         let slot_name = slot_name.trim_start_matches('$').to_string();
-        let slot = self
-            .slot_data
-            .entry(slot_name.clone())
-            .or_insert_with(SlotData::default);
+        let slot = self.slot_data.entry(slot_name.clone()).or_default();
         if slot_name == "default" || slot_name.is_empty() {
             slot.default = Some(content);
         } else {
@@ -168,6 +190,17 @@ impl ComponentRenderer {
         }
     }
 
+    pub fn set_scoped_data(&mut self, slot_name: &str, key: &str, value: Value) {
+        let slot_name = slot_name.trim_start_matches('$').to_string();
+        let slot = self.slot_data.entry(slot_name).or_default();
+        slot.scoped_data.insert(key.to_string(), value);
+    }
+
+    pub fn get_scoped_data(&self, slot_name: &str) -> Option<HashMap<String, Value>> {
+        let name = slot_name.trim_start_matches('$').to_string();
+        self.slot_data.get(&name).map(|s| s.scoped_data.clone())
+    }
+
     pub fn once(&mut self, key: u64) -> bool {
         if self.once_rendered.contains(&key) {
             return false;
@@ -185,18 +218,63 @@ impl ComponentRenderer {
 #[derive(Clone, Default)]
 pub struct ComponentRegistry {
     components: HashMap<String, Component>,
+    cache: Arc<std::sync::RwLock<ComponentCache>>,
+    cache_enabled: bool,
+}
+
+#[derive(Default)]
+pub struct ComponentCache {
+    entries: HashMap<u64, CachedRender>,
+}
+
+#[derive(Clone)]
+pub struct CachedRender {
+    pub html: String,
+    #[allow(dead_code)]
+    pub props_hash: u64,
+}
+
+impl ComponentCache {
+    pub fn new() -> Self {
+        ComponentCache {
+            entries: HashMap::new(),
+        }
+    }
+
+    pub fn get(&self, key: &u64) -> Option<String> {
+        self.entries.get(key).map(|c| c.html.clone())
+    }
+
+    pub fn insert(&mut self, key: u64, html: String, props_hash: u64) {
+        self.entries.insert(key, CachedRender { html, props_hash });
+    }
+
+    pub fn clear(&mut self) {
+        self.entries.clear();
+    }
+
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
 }
 
 impl ComponentRegistry {
     pub fn new() -> Self {
         ComponentRegistry {
             components: HashMap::new(),
+            cache: Arc::new(std::sync::RwLock::new(ComponentCache::new())),
+            cache_enabled: false,
         }
     }
 
     pub fn register(&mut self, path: &str, template: &str) -> Result<()> {
         let props = Self::parse_props(template);
         let (slots, optional_slots) = Self::parse_slots(template);
+        let scoped_slots = Self::parse_scoped_slots(template);
 
         self.components.insert(
             path.to_string(),
@@ -206,6 +284,7 @@ impl ComponentRegistry {
                 template: template.to_string(),
                 slots,
                 optional_slots,
+                scoped_slots,
             },
         );
 
@@ -271,6 +350,78 @@ impl ComponentRegistry {
         }
 
         Ok(result)
+    }
+
+    pub fn enable_cache(&mut self, enabled: bool) {
+        self.cache_enabled = enabled;
+    }
+
+    pub fn is_cache_enabled(&self) -> bool {
+        self.cache_enabled
+    }
+
+    pub fn get_cached(&self, key: u64) -> Option<String> {
+        if !self.cache_enabled {
+            return None;
+        }
+        self.cache.read().ok()?.get(&key)
+    }
+
+    pub fn set_cached(&self, key: u64, html: String, props_hash: u64) {
+        if !self.cache_enabled {
+            return;
+        }
+        if let Ok(mut cache) = self.cache.write() {
+            cache.insert(key, html, props_hash);
+        }
+    }
+
+    pub fn clear_cache(&self) {
+        if let Ok(mut cache) = self.cache.write() {
+            cache.clear();
+        }
+    }
+
+    pub fn cache_len(&self) -> usize {
+        self.cache.read().map(|c| c.len()).unwrap_or(0)
+    }
+
+    fn parse_scoped_slots(template: &str) -> Vec<ScopedSlotDef> {
+        let mut scoped_slots = Vec::new();
+
+        if let Some(start) = template.find("{%-- atom:") {
+            if let Some(end) = template[start..].find("--%}") {
+                let atom_block = &template[start + 11..start + end];
+                if let Some(slots_start) = atom_block.find("@scoped_slots(") {
+                    let slots_end = atom_block[slots_start..]
+                        .find(')')
+                        .map(|i| slots_start + i + 1);
+                    if let Some(end_idx) = slots_end {
+                        let slots_str = &atom_block[slots_start + 14..end_idx];
+                        for part in slots_str.split(',') {
+                            let part = part.trim();
+                            if part.is_empty() {
+                                continue;
+                            }
+                            let parts: Vec<&str> = part.split(':').collect();
+                            let name = parts[0].trim().to_string();
+                            let props = if parts.len() > 1 {
+                                parts[1]
+                                    .trim()
+                                    .split(',')
+                                    .map(|s| s.trim().to_string())
+                                    .collect()
+                            } else {
+                                vec![]
+                            };
+                            scoped_slots.push(ScopedSlotDef { name, props });
+                        }
+                    }
+                }
+            }
+        }
+
+        scoped_slots
     }
 
     fn parse_props(template: &str) -> Vec<PropDef> {
@@ -368,10 +519,8 @@ impl ComponentRegistry {
                     if !optional_slots.contains(&name) {
                         optional_slots.push(name);
                     }
-                } else {
-                    if !slots.contains(&name) {
-                        slots.push(name);
-                    }
+                } else if !slots.contains(&name) {
+                    slots.push(name);
                 }
             }
         }
