@@ -27,6 +27,7 @@ pub struct Atom {
     context_chain: ContextChain,
     max_loop_iter: usize,
     debug: bool,
+    use_parallel: bool,
 }
 
 impl Atom {
@@ -142,6 +143,7 @@ impl Atom {
             context_chain: ContextChain::new(),
             max_loop_iter: 10000,
             debug: false,
+            use_parallel: false,
         }
     }
 
@@ -275,6 +277,49 @@ impl Atom {
 
     pub fn clear_cache(&mut self) {
         self.tera.templates.clear();
+    }
+
+    pub fn set_parallel(&mut self, enabled: bool) {
+        self.use_parallel = enabled;
+    }
+
+    pub fn is_parallel(&self) -> bool {
+        self.use_parallel
+    }
+
+    #[cfg(feature = "parallel")]
+    pub fn render_many(
+        &self,
+        templates: &[(&str, &Value)],
+    ) -> std::result::Result<Vec<(String, String)>, Error> {
+        use rayon::prelude::*;
+
+        let results: Vec<std::result::Result<(String, String), Error>> = templates
+            .par_iter()
+            .map(|(name, context)| {
+                let rendered = self.render(name, context)?;
+                Ok((name.to_string(), rendered))
+            })
+            .collect();
+
+        let mut output = Vec::new();
+        for result in results {
+            output.push(result?);
+        }
+        Ok(output)
+    }
+
+    #[cfg(not(feature = "parallel"))]
+    pub fn render_many(
+        &self,
+        templates: &[(&str, &Value)],
+    ) -> std::result::Result<Vec<(String, String)>, Error> {
+        let mut results = Vec::new();
+        for (name, context) in templates {
+            let rendered = self.render(name, context)?;
+            results.push((name.to_string(), rendered));
+        }
+        Ok(results)
     }
 }
 
