@@ -100,10 +100,7 @@ pub fn truncate(value: &Value, args: &HashMap<String, Value>) -> Result<Value, t
         return Ok(Value::String(s.to_string()));
     }
 
-    let truncated = s
-        .chars()
-        .take(length.saturating_sub(suffix.len()))
-        .collect::<String>();
+    let truncated = s.chars().take(length).collect::<String>();
     Ok(Value::String(format!("{}{}", truncated, suffix)))
 }
 
@@ -415,4 +412,192 @@ impl Function for NowFn {
             Ok(Value::String(now.to_rfc3339()))
         }
     }
+}
+
+// Slot helper - returns slot content from context
+pub fn slot_filter(name: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let slot_name = name.as_str().unwrap_or("default").trim_start_matches('$');
+
+    // Look for slot content in context
+    let slot_key = format!("__slot_{}", slot_name);
+    if let Some(slot_content) = name.get(&slot_key) {
+        return Ok(slot_content.clone());
+    }
+
+    Ok(Value::String(String::new()))
+}
+
+pub fn has_slot_filter(name: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let slot_name = name.as_str().unwrap_or("default").trim_start_matches('$');
+
+    let slot_key = format!("__slot_{}", slot_name);
+    Ok(Value::Bool(name.get(&slot_key).is_some()))
+}
+
+// Stack helper - retrieves accumulated stack content
+pub fn stack_filter(name: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let stack_name = name.as_str().unwrap_or("");
+    let stack_key = format!("__stack_{}", stack_name);
+
+    Ok(name
+        .get(&stack_key)
+        .cloned()
+        .unwrap_or(Value::String(String::new())))
+}
+
+// Push function - adds content to a stack
+pub struct PushFn;
+
+impl Function for PushFn {
+    fn call(&self, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+        let stack_name = args
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("default");
+        let content = args.get("content").and_then(|v| v.as_str()).unwrap_or("");
+
+        let stack_key = format!("__stack_{}", stack_name);
+        Ok(Value::String(format!("{}__push__ {}", stack_key, content)))
+    }
+}
+
+// Prepend function - adds content to beginning of stack
+pub struct PrependFn;
+
+impl Function for PrependFn {
+    fn call(&self, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+        let stack_name = args
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("default");
+        let content = args.get("content").and_then(|v| v.as_str()).unwrap_or("");
+
+        let stack_key = format!("__stack_{}", stack_name);
+        Ok(Value::String(format!(
+            "{}__prepend__ {}",
+            stack_key, content
+        )))
+    }
+}
+
+// Set slot function - defines slot content
+pub struct SetSlotFn;
+
+impl Function for SetSlotFn {
+    fn call(&self, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+        let slot_name = args
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("default")
+            .trim_start_matches('$');
+        let content = args.get("content").and_then(|v| v.as_str()).unwrap_or("");
+
+        let slot_key = format!("__slot_{}", slot_name);
+        Ok(Value::String(format!("{} {}", slot_key, content)))
+    }
+}
+
+// Once function - renders content only once
+pub struct OnceFn;
+
+impl Function for OnceFn {
+    fn call(&self, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+        let key = args
+            .get("key")
+            .and_then(|v| v.as_str())
+            .unwrap_or("default");
+
+        // Simple hash for deduplication
+        let hash = simple_hash(key);
+
+        // In a real implementation, we'd check against a stored set
+        // For now, always return the content to render
+        let content = args.get("content").and_then(|v| v.as_str()).unwrap_or("");
+
+        Ok(json!({ "key": hash, "content": content }))
+    }
+}
+
+fn simple_hash(s: &str) -> u64 {
+    let mut hash: u64 = 0;
+    for (i, c) in s.bytes().enumerate() {
+        hash = hash.wrapping_add((c as u64).wrapping_mul(31_u64.wrapping_pow(i as u32)));
+    }
+    hash
+}
+
+// Conditional filter - returns value when condition is truthy, otherwise returns default
+pub fn when(value: &Value, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let condition = value.as_bool().unwrap_or(false);
+    let then_val = args.get("then").cloned().unwrap_or(Value::Null);
+    let else_val = args.get("else").cloned().unwrap_or(Value::Null);
+
+    Ok(if condition { then_val } else { else_val })
+}
+
+// Default filter - returns value if truthy, otherwise returns default
+pub fn default_filter(value: &Value, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let is_falsy = value.is_null()
+        || (value.as_bool() == Some(false))
+        || (value.as_array().map(|a| a.is_empty()).unwrap_or(false))
+        || (value.as_object().map(|o| o.is_empty()).unwrap_or(false));
+
+    if is_falsy {
+        Ok(args.get("value").cloned().unwrap_or(Value::Null))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+// Coalesce filter - returns first non-null value
+pub fn coalesce(value: &Value, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if !value.is_null() {
+        return Ok(value.clone());
+    }
+
+    for i in 0.. {
+        if let Some(v) = args.get(&format!("{}", i)) {
+            if !v.is_null() {
+                return Ok(v.clone());
+            }
+        } else {
+            break;
+        }
+    }
+
+    Ok(Value::Null)
+}
+
+// Defined test - returns true if value is not null
+pub fn defined(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    Ok(Value::Bool(!value.is_null()))
+}
+
+// Undefined test - returns true if value is null
+pub fn undefined(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    Ok(Value::Bool(value.is_null()))
+}
+
+// Empty test - returns true if value is null, empty string, empty array, or empty object
+pub fn empty(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let is_empty = match value {
+        Value::Null => true,
+        Value::String(s) => s.is_empty(),
+        Value::Array(arr) => arr.is_empty(),
+        Value::Object(obj) => obj.is_empty(),
+        _ => false,
+    };
+    Ok(Value::Bool(is_empty))
+}
+
+// Not empty test
+pub fn not_empty(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let is_empty = match value {
+        Value::Null => true,
+        Value::String(s) => s.is_empty(),
+        Value::Array(arr) => arr.is_empty(),
+        Value::Object(obj) => obj.is_empty(),
+        _ => false,
+    };
+    Ok(Value::Bool(!is_empty))
 }

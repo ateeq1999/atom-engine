@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
+use serde_json::Value;
+
 use crate::error::Result;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PropType {
     String,
     Number,
@@ -23,6 +26,17 @@ impl PropType {
             _ => PropType::Any,
         }
     }
+
+    pub fn matches(&self, value: &Value) -> bool {
+        match self {
+            PropType::Any => true,
+            PropType::String => value.is_string(),
+            PropType::Number => value.is_number(),
+            PropType::Boolean => value.is_boolean(),
+            PropType::Array => value.is_array(),
+            PropType::Object => value.is_object(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -30,7 +44,31 @@ pub struct PropDef {
     pub name: String,
     pub prop_type: PropType,
     pub required: bool,
-    pub default: Option<serde_json::Value>,
+    pub default: Option<Value>,
+}
+
+impl PropDef {
+    pub fn validate(&self, value: &Value) -> std::result::Result<(), String> {
+        if value.is_null() && self.required {
+            return Err(format!("Required prop '{}' is null", self.name));
+        }
+        if !self.prop_type.matches(value) {
+            return Err(format!(
+                "Prop '{}' type mismatch: expected {:?}, got {}",
+                self.name,
+                self.prop_type,
+                match value {
+                    Value::Null => "null",
+                    Value::Bool(_) => "boolean",
+                    Value::Number(_) => "number",
+                    Value::String(_) => "string",
+                    Value::Array(_) => "array",
+                    Value::Object(_) => "object",
+                }
+            ));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -39,9 +77,112 @@ pub struct Component {
     pub props: Vec<PropDef>,
     pub template: String,
     pub slots: Vec<String>,
+    pub optional_slots: Vec<String>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Default)]
+pub struct SlotData {
+    pub fills: IndexMap<String, String>,
+    pub default: Option<String>,
+}
+
+#[derive(Clone, Default)]
+pub struct ComponentRenderer {
+    stack_buffers: HashMap<String, Vec<String>>,
+    slot_data: HashMap<String, SlotData>,
+    once_rendered: std::collections::HashSet<u64>,
+}
+
+impl ComponentRenderer {
+    pub fn new() -> Self {
+        ComponentRenderer {
+            stack_buffers: HashMap::new(),
+            slot_data: HashMap::new(),
+            once_rendered: std::collections::HashSet::new(),
+        }
+    }
+
+    pub fn push(&mut self, name: &str, content: String) {
+        self.stack_buffers
+            .entry(name.to_string())
+            .or_insert_with(Vec::new)
+            .push(content);
+    }
+
+    pub fn prepend(&mut self, name: &str, content: String) {
+        self.stack_buffers
+            .entry(name.to_string())
+            .or_insert_with(Vec::new)
+            .insert(0, content);
+    }
+
+    pub fn drain(&mut self, name: &str) -> String {
+        self.stack_buffers
+            .remove(name)
+            .map(|v| v.join("\n"))
+            .unwrap_or_default()
+    }
+
+    pub fn peek(&self, name: &str) -> Option<String> {
+        self.stack_buffers.get(name).map(|v| v.join("\n"))
+    }
+
+    pub fn set_slot_fill(&mut self, slot_name: &str, content: String) {
+        let slot_name = slot_name.trim_start_matches('$').to_string();
+        let slot = self
+            .slot_data
+            .entry(slot_name.clone())
+            .or_insert_with(SlotData::default);
+        if slot_name == "default" || slot_name.is_empty() {
+            slot.default = Some(content);
+        } else {
+            slot.fills.insert(slot_name, content);
+        }
+    }
+
+    pub fn get_slot(&self, name: &str) -> Option<String> {
+        let name = name.trim_start_matches('$').to_string();
+        if name == "default" || name.is_empty() {
+            self.slot_data
+                .get("default")
+                .and_then(|s| s.default.clone())
+        } else {
+            self.slot_data
+                .get(&name)
+                .and_then(|s| s.fills.get(&name).cloned())
+        }
+    }
+
+    pub fn has_slot(&self, name: &str) -> bool {
+        let name = name.trim_start_matches('$').to_string();
+        if name == "default" || name.is_empty() {
+            self.slot_data
+                .get("default")
+                .map(|s| s.default.is_some())
+                .unwrap_or(false)
+        } else {
+            self.slot_data
+                .get(&name)
+                .map(|s| s.fills.contains_key(&name))
+                .unwrap_or(false)
+        }
+    }
+
+    pub fn once(&mut self, key: u64) -> bool {
+        if self.once_rendered.contains(&key) {
+            return false;
+        }
+        self.once_rendered.insert(key);
+        true
+    }
+
+    pub fn reset(&mut self) {
+        self.stack_buffers.clear();
+        self.slot_data.clear();
+    }
+}
+
+#[derive(Clone, Default)]
 pub struct ComponentRegistry {
     components: HashMap<String, Component>,
 }
@@ -55,7 +196,7 @@ impl ComponentRegistry {
 
     pub fn register(&mut self, path: &str, template: &str) -> Result<()> {
         let props = Self::parse_props(template);
-        let slots = Self::parse_slots(template);
+        let (slots, optional_slots) = Self::parse_slots(template);
 
         self.components.insert(
             path.to_string(),
@@ -64,6 +205,7 @@ impl ComponentRegistry {
                 props,
                 template: template.to_string(),
                 slots,
+                optional_slots,
             },
         );
 
@@ -75,24 +217,20 @@ impl ComponentRegistry {
     }
 
     pub fn resolve_tag(&self, tag: &str) -> Option<String> {
-        // Try direct component path
         if self.components.contains_key(tag) {
             return Some(tag.to_string());
         }
 
-        // Try components/ prefix
         let with_prefix = format!("components/{}", tag);
         if self.components.contains_key(&with_prefix) {
             return Some(with_prefix);
         }
 
-        // Try with file extension
         let with_ext = format!("{}.html", tag);
         if self.components.contains_key(&with_ext) {
             return Some(with_ext);
         }
 
-        // Try nested: form.input -> components/form/input
         let parts: Vec<&str> = tag.split('.').collect();
         if parts.len() >= 2 {
             let nested = format!("components/{}.html", parts.join("/"));
@@ -108,10 +246,36 @@ impl ComponentRegistry {
         self.components.keys().cloned().collect()
     }
 
+    pub fn validate_props(
+        &self,
+        path: &str,
+        provided: &Value,
+    ) -> std::result::Result<HashMap<String, Value>, String> {
+        let component = self
+            .components
+            .get(path)
+            .ok_or_else(|| format!("Component '{}' not found", path))?;
+
+        let mut result = HashMap::new();
+        let provided_obj = provided.as_object().ok_or("Props must be an object")?;
+
+        for prop_def in &component.props {
+            if let Some(value) = provided_obj.get(&prop_def.name) {
+                prop_def.validate(value)?;
+                result.insert(prop_def.name.clone(), value.clone());
+            } else if let Some(default) = &prop_def.default {
+                result.insert(prop_def.name.clone(), default.clone());
+            } else if prop_def.required {
+                return Err(format!("Required prop '{}' not provided", prop_def.name));
+            }
+        }
+
+        Ok(result)
+    }
+
     fn parse_props(template: &str) -> Vec<PropDef> {
         let mut props = Vec::new();
 
-        // Look for {%-- atom: @props({ ... }) --%}
         if let Some(start) = template.find("{%-- atom:") {
             if let Some(end) = template[start..].find("--%}") {
                 let atom_block = &template[start + 11..start + end];
@@ -146,12 +310,17 @@ impl ComponentRegistry {
                 continue;
             }
 
-            let name = parts[0].trim().to_string();
+            let mut name = parts[0].trim().to_string();
             let prop_type = if parts.len() > 1 {
                 PropType::from_str(parts[1].trim())
             } else {
                 PropType::Any
             };
+
+            let optional = name.ends_with('?');
+            if optional {
+                name = name.trim_end_matches('?').to_string();
+            }
 
             let (required, default) = if let Some(eq_pos) = name.find('=') {
                 let default_str = &name[eq_pos + 1..];
@@ -161,7 +330,9 @@ impl ComponentRegistry {
                 (true, None)
             };
 
-            let name = name.split('=').next().unwrap_or(&name).trim().to_string();
+            name = name.split('=').next().unwrap_or(&name).trim().to_string();
+
+            let required = required && !optional;
 
             props.push(PropDef {
                 name,
@@ -174,27 +345,37 @@ impl ComponentRegistry {
         props
     }
 
-    fn parse_slots(template: &str) -> Vec<String> {
+    fn parse_slots(template: &str) -> (Vec<String>, Vec<String>) {
         let mut slots = Vec::new();
+        let mut optional_slots = Vec::new();
 
-        // Look for slot_default(), slot_header(), etc.
         let mut search = template;
         while let Some(start) = search.find("slot_") {
             search = &search[start + 5..];
             if let Some(end) = search.find("()") {
-                let slot_name = &search[..end];
-                if !slot_name.is_empty() && !slots.contains(&slot_name.to_string()) {
-                    slots.push(slot_name.to_string());
+                let raw_name = &search[..end];
+                if raw_name.is_empty() {
+                    continue;
+                }
+                let is_optional = raw_name.ends_with('?');
+                let name = if is_optional {
+                    raw_name.trim_end_matches('?').to_string()
+                } else {
+                    raw_name.to_string()
+                };
+
+                if is_optional {
+                    if !optional_slots.contains(&name) {
+                        optional_slots.push(name);
+                    }
+                } else {
+                    if !slots.contains(&name) {
+                        slots.push(name);
+                    }
                 }
             }
         }
 
-        slots
-    }
-}
-
-impl Default for ComponentRegistry {
-    fn default() -> Self {
-        Self::new()
+        (slots, optional_slots)
     }
 }

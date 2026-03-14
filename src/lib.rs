@@ -1,5 +1,7 @@
 use glob::glob;
 use serde_json::Value;
+use std::cell::RefCell;
+use std::rc::Rc;
 use tera::{Context, Filter, Function, Tera};
 
 mod components;
@@ -7,9 +9,15 @@ mod context;
 mod error;
 mod filters;
 
-pub use components::{Component, ComponentRegistry, PropDef, PropType};
+pub use components::{
+    Component, ComponentRegistry, ComponentRenderer, PropDef, PropType, SlotData,
+};
 pub use context::ContextChain;
 pub use error::Error;
+
+thread_local! {
+    static COMPONENT_RENDERER: RefCell<Option<Rc<RefCell<ComponentRenderer>>>> = RefCell::new(None);
+}
 
 #[derive(Clone)]
 pub struct Atom {
@@ -23,6 +31,8 @@ pub struct Atom {
 impl Atom {
     pub fn new() -> Self {
         let mut tera = Tera::default();
+
+        // Register filters
         tera.register_filter("json_encode", filters::json_encode);
         tera.register_filter("upper", filters::upper);
         tera.register_filter("lower", filters::lower);
@@ -50,11 +60,33 @@ impl Atom {
         tera.register_filter("escape_html", filters::escape_html);
         tera.register_filter("safe", filters::safe);
 
+        // Register slot helper
+        tera.register_filter("slot", filters::slot_filter);
+        tera.register_filter("has_slot", filters::has_slot_filter);
+
+        // Register stack filters
+        tera.register_filter("stack", filters::stack_filter);
+        
+        // Register conditional filters
+        tera.register_filter("when", filters::when);
+        tera.register_filter("default", filters::default_filter);
+        tera.register_filter("coalesce", filters::coalesce);
+        tera.register_filter("defined", filters::defined);
+        tera.register_filter("undefined", filters::undefined);
+        tera.register_filter("empty", filters::empty);
+        tera.register_filter("not_empty", filters::not_empty);
+
         // Register global functions
         tera.register_function("dump", filters::DumpFn);
         tera.register_function("log", filters::LogFn);
         tera.register_function("range", filters::RangeFn);
         tera.register_function("now", filters::NowFn);
+
+        // Register component functions
+        tera.register_function("push", filters::PushFn);
+        tera.register_function("prepend", filters::PrependFn);
+        tera.register_function("set_slot", filters::SetSlotFn);
+        tera.register_function("once", filters::OnceFn);
 
         Atom {
             tera,
@@ -164,6 +196,10 @@ impl Atom {
             template: template.to_string(),
             message: e.to_string(),
         })
+    }
+
+    pub fn provide(&mut self, key: &str, value: Value) {
+        self.context_chain.provide(key, value);
     }
 }
 
