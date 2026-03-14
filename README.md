@@ -4,7 +4,7 @@
 [![Docs](https://docs.rs/atom-engine/badge.svg)](https://docs.rs/atom-engine)
 [![License](https://img.shields.io/crates/l/atom-engine)](LICENSE)
 [![Rust Version](https://img.shields.io/badge/rust-1.70%2B-blue.svg)](https://rust-lang.org)
-[![Build Status](https://github.com/atom-engine/atom-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/atom-engine/atom-engine/actions)
+[![Build Status](https://github.com/ateeq1999/atom-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/ateeq1999/atom-engine/actions)
 [![codecov](https://codecov.io/gh/atom-engine/atom-engine/branch/main/graph/badge.svg)](https://codecov.io/gh/atom-engine/atom-engine)
 
 A high-performance, component-oriented template engine for Rust built on [Tera](https://keats.github.io/tera/docs/).
