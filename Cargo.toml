@@ -9,7 +9,7 @@ repository = "https://github.com/atom-engine/atom-engine"
 homepage = "https://github.com/atom-engine/atom-engine"
 documentation = "https://github.com/atom-engine/atom-engine#readme"
 keywords = ["template", "templating", "tera", "components", "jinja2"]
-categories = ["template-engine", "web-development"]
+categories = ["template-engine", "web-programming"]
 readme = "README.md"
 
 [package.metadata.docs.rs]
