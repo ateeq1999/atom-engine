@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2>About Us</h2>
+  <p>We are a company that builds great things.</p>
+  
+  <h3>Our Team</h3>
+  <ul>
+  {% for member in team %}
+    <li>
+      <strong>{{ member.name }}</strong> - {{ member.role }}
+    </li>
+  {% endfor %}
+  </ul>
+{% endblock %}

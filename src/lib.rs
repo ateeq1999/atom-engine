@@ -66,7 +66,7 @@ impl Atom {
 
         // Register stack filters
         tera.register_filter("stack", filters::stack_filter);
-        
+
         // Register conditional filters
         tera.register_filter("when", filters::when);
         tera.register_filter("default", filters::default_filter);
@@ -104,7 +104,14 @@ impl Atom {
                 message: e.to_string(),
             })?
             .filter_map(|p| p.ok())
-            .map(|p| (p, None))
+            .map(|p| {
+                let name = p
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                (p, Some(name))
+            })
             .collect();
 
         self.tera
