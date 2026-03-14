@@ -1,29 +1,45 @@
 [package]
 name = "atom-engine"
-version = "4.0.0"
+version = "5.0.0"
 edition = "2021"
-description = "A pure, general-purpose template engine in Rust"
+description = "A component-oriented template engine built on Tera"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/atom-engine/atom-engine"
 
 [dependencies]
+# Template engine base
+tera = "1"
+
+# Error handling
 anyhow = "1"
 thiserror = "1"
+
+# Data structures
 indexmap = { version = "2", features = ["serde"] }
-heck = "0.5"
-chrono = { version = "0.4", features = ["serde"] }
+
+# Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+# Utilities
+glob = "0.3"
+chrono = { version = "0.4", features = ["serde"] }
+heck = "0.5"
 unicode-segmentation = "1"
 regex = "1"
+
+# Encoding
 base64 = "0.22"
 sha2 = "0.10"
 md-5 = "0.10"
-uuid = { version = "1", features = ["v4"] }
-strsim = "0.11"
-rand = "0.8"
 urlencoding = "2"
 hex = "0.4"
+
+# Random
+rand = "0.8"
+
+# Fuzzy matching for error suggestions
+strsim = "0.11"
 
 rayon = { version = "1", optional = true }
 

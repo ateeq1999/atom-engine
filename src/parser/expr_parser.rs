@@ -128,6 +128,7 @@ impl<'a> ExprParser<'a> {
                 Token::Question(span) => *span,
                 Token::Dollar(span) => *span,
                 Token::Backtick(span) => *span,
+                Token::End(span) => *span,
             }
         } else {
             Span::new(0, 0, 0, 0)

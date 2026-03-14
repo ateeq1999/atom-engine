@@ -1,152 +1,173 @@
-pub mod directives;
-pub mod error;
-pub mod helpers;
-pub mod parser;
-pub mod renderer;
-pub mod types;
+use glob::glob;
+use serde_json::Value;
+use tera::{Context, Filter, Function, Tera};
 
-pub use error::{ParseError, RenderError};
-pub use parser::parser::Template;
-pub use renderer::helper_eval::{HelperFn, HelperRegistry};
-pub use renderer::renderer::TemplateRegistry;
-pub use types::value::Value;
+mod components;
+mod context;
+mod error;
+mod filters;
 
-use parser::lexer::Lexer;
-use parser::parser::Parser;
-use renderer::renderer::Renderer;
-use std::collections::HashMap;
-use std::sync::Arc;
+pub use components::{Component, ComponentRegistry, PropDef, PropType};
+pub use context::ContextChain;
+pub use error::Error;
 
-#[derive(Debug, Clone)]
-pub struct EngineConfig {
-    pub escape_html: bool,
-    pub max_loop_iter: usize,
-    pub debug: bool,
-    pub strict_props: bool,
+#[derive(Clone)]
+pub struct Atom {
+    tera: Tera,
+    components: ComponentRegistry,
+    context_chain: ContextChain,
+    max_loop_iter: usize,
+    debug: bool,
 }
 
-impl Default for EngineConfig {
-    fn default() -> Self {
-        EngineConfig {
-            escape_html: true,
-            max_loop_iter: 1000,
+impl Atom {
+    pub fn new() -> Self {
+        let mut tera = Tera::default();
+        tera.register_filter("json_encode", filters::json_encode);
+        tera.register_filter("upper", filters::upper);
+        tera.register_filter("lower", filters::lower);
+        tera.register_filter("capitalize", filters::capitalize);
+        tera.register_filter("title", filters::title);
+        tera.register_filter("camel_case", filters::camel_case);
+        tera.register_filter("pascal_case", filters::pascal_case);
+        tera.register_filter("snake_case", filters::snake_case);
+        tera.register_filter("kebab_case", filters::kebab_case);
+        tera.register_filter("truncate", filters::truncate);
+        tera.register_filter("slugify", filters::slugify);
+        tera.register_filter("pluralize", filters::pluralize);
+        tera.register_filter("first", filters::first);
+        tera.register_filter("last", filters::last);
+        tera.register_filter("length", filters::length);
+        tera.register_filter("reverse", filters::reverse);
+        tera.register_filter("sort", filters::sort);
+        tera.register_filter("group_by", filters::group_by);
+        tera.register_filter("where", filters::where_filter);
+        tera.register_filter("pluck", filters::pluck);
+        tera.register_filter("round", filters::round);
+        tera.register_filter("abs", filters::abs);
+        tera.register_filter("format", filters::format_number);
+        tera.register_filter("date", filters::date_format);
+        tera.register_filter("escape_html", filters::escape_html);
+        tera.register_filter("safe", filters::safe);
+
+        // Register global functions
+        tera.register_function("dump", filters::DumpFn);
+        tera.register_function("log", filters::LogFn);
+        tera.register_function("range", filters::RangeFn);
+        tera.register_function("now", filters::NowFn);
+
+        Atom {
+            tera,
+            components: ComponentRegistry::new(),
+            context_chain: ContextChain::new(),
+            max_loop_iter: 10000,
             debug: false,
-            strict_props: false,
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct Engine {
-    registry: TemplateRegistry,
-    helpers: HelperRegistry,
-    transforms: TransformRegistry,
-    config: EngineConfig,
-}
-
-impl Engine {
-    pub fn new() -> Self {
-        Engine {
-            registry: TemplateRegistry::new(),
-            helpers: HelperRegistry::new(),
-            transforms: TransformRegistry::new(),
-            config: EngineConfig::default(),
         }
     }
 
-    pub fn with_config(config: EngineConfig) -> Self {
-        Engine {
-            registry: TemplateRegistry::new(),
-            helpers: HelperRegistry::new(),
-            transforms: TransformRegistry::new(),
-            config,
-        }
-    }
+    pub fn load_templates(&mut self, glob_pattern: &str) -> std::result::Result<(), Error> {
+        let template_files: Vec<(std::path::PathBuf, Option<String>)> = glob(glob_pattern)
+            .map_err(|e| Error::TemplateLoad {
+                path: glob_pattern.to_string(),
+                message: e.to_string(),
+            })?
+            .filter_map(|p| p.ok())
+            .map(|p| (p, None))
+            .collect();
 
-    pub fn add_disk(&mut self, name: &str, templates: HashMap<String, Arc<Template>>) {
-        self.registry.add_disk(name, templates);
-    }
-
-    pub fn add_embedded(&mut self, templates: HashMap<String, Arc<Template>>) {
-        self.registry.add_disk("default", templates);
-    }
-
-    pub fn register_helper(&mut self, name: &str, helper: Arc<dyn HelperFn>) {
-        self.helpers.register(name.to_string(), helper);
-    }
-
-    pub fn register_transform(&mut self, name: &str, transform: Arc<dyn TransformFn>) {
-        self.transforms.register(name, transform);
-    }
-
-    pub fn render(&self, path: &str, data: Value) -> Result<String, RenderError> {
-        let template = self
-            .registry
-            .get(path)
-            .ok_or_else(|| RenderError::TemplateNotFound {
-                path: path.to_string(),
+        self.tera
+            .add_template_files(template_files.into_iter())
+            .map_err(|e| Error::TemplateLoad {
+                path: glob_pattern.to_string(),
+                message: e.to_string(),
             })?;
-
-        let mut renderer = Renderer::new(&template, &self.helpers, &self.registry);
-        renderer.max_loop_iter = self.config.max_loop_iter;
-        renderer.debug = self.config.debug;
-        renderer.render()
+        Ok(())
     }
 
-    pub fn render_raw(&self, source: &str, data: Value) -> Result<String, RenderError> {
-        let template = self.parse(source)?;
-
-        let mut renderer = Renderer::new(&template, &self.helpers, &self.registry);
-        renderer.max_loop_iter = self.config.max_loop_iter;
-        renderer.debug = self.config.debug;
-        renderer.with_data(data).render()
-    }
-
-    pub fn parse(&self, source: &str) -> Result<Template, ParseError> {
-        let tokens = Lexer::tokenize(source);
-        let mut parser = Parser::new(tokens, source.to_string());
-        Ok(parser.parse()?)
-    }
-}
-
-impl Default for Engine {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[derive(Clone)]
-pub struct TransformRegistry {
-    transforms: HashMap<String, Arc<dyn TransformFn>>,
-}
-
-pub trait TransformFn: Send + Sync {
-    fn apply(&self, content: &str) -> Result<String, RenderError>;
-}
-
-impl TransformRegistry {
-    pub fn new() -> Self {
-        TransformRegistry {
-            transforms: HashMap::new(),
-        }
-    }
-
-    pub fn register(&mut self, name: &str, transform: Arc<dyn TransformFn>) {
-        self.transforms.insert(name.to_string(), transform);
-    }
-
-    pub fn apply(&self, name: &str, content: &str) -> Result<String, RenderError> {
-        self.transforms
-            .get(name)
-            .ok_or_else(|| RenderError::TransformError {
+    pub fn add_template(&mut self, name: &str, content: &str) -> std::result::Result<(), Error> {
+        self.tera
+            .add_raw_template(name, content)
+            .map_err(|e| Error::TemplateParse {
                 name: name.to_string(),
-                message: format!("Transform '{}' not found", name),
-            })
-            .and_then(|t| t.apply(content))
+                message: e.to_string(),
+            })?;
+        Ok(())
+    }
+
+    pub fn register_component(
+        &mut self,
+        path: &str,
+        template: &str,
+    ) -> std::result::Result<(), Error> {
+        self.components.register(path, template)
+    }
+
+    pub fn register_filter<F>(&mut self, name: &str, filter: F)
+    where
+        F: Filter + Send + Sync + 'static,
+    {
+        self.tera.register_filter(name, filter);
+    }
+
+    pub fn register_function<F>(&mut self, name: &str, function: F)
+    where
+        F: Function + Send + Sync + 'static,
+    {
+        self.tera.register_function(name, function);
+    }
+
+    pub fn set_max_loop_iter(&mut self, max: usize) {
+        self.max_loop_iter = max;
+    }
+
+    pub fn set_debug(&mut self, debug: bool) {
+        self.debug = debug;
+    }
+
+    pub fn render(&self, template: &str, context: &Value) -> Result<String, Error> {
+        let mut ctx = Context::from_serialize(context).map_err(|e| Error::Context {
+            message: e.to_string(),
+        })?;
+
+        // Add context chain values to context
+        for (key, value) in self.context_chain.all() {
+            ctx.insert(key, &value);
+        }
+
+        // Add component helpers
+        ctx.insert("__atom_components", &self.components.list_components());
+
+        self.tera.render(template, &ctx).map_err(|e| Error::Render {
+            template: template.to_string(),
+            message: e.to_string(),
+        })
+    }
+
+    pub fn render_with_components(
+        &self,
+        template: &str,
+        context: &Value,
+        component_data: &Value,
+    ) -> std::result::Result<String, Error> {
+        let mut ctx = Context::from_serialize(context).map_err(|e| Error::Context {
+            message: e.to_string(),
+        })?;
+
+        // Add component slot data
+        if let Some(obj) = component_data.as_object() {
+            for (key, value) in obj {
+                ctx.insert(key, &value);
+            }
+        }
+
+        self.tera.render(template, &ctx).map_err(|e| Error::Render {
+            template: template.to_string(),
+            message: e.to_string(),
+        })
     }
 }
 
-impl Default for TransformRegistry {
+impl Default for Atom {
     fn default() -> Self {
         Self::new()
     }

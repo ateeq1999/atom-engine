@@ -58,6 +58,7 @@ pub enum Token {
     Question(Span),
     Dollar(Span),
     Backtick(Span),
+    End(Span), // @end for closing blocks
 }
 
 pub struct Lexer<'a> {
@@ -338,9 +339,16 @@ impl<'a> Lexer<'a> {
             // When we're already inside an interpolation, don't treat { as start of {{
             // Only check for {{ if we're at the top level
             if !self.in_interpolation && second == Some('{') {
-                // Now check the fourth character (third position after opening)
-                // {{name}}  -> 0:{, 1:{, 2:n, 3:a...
+                // Check for {{{ before {{ (fourth character tells us which)
                 // {{{name}} -> 0:{, 1:{, 2:{, 3:n...
+                if fourth == Some('{') {
+                    // Handle {{{ (raw interpolation)
+                    self.advance(); // {
+                    self.advance(); // {
+                    self.advance(); // {
+                    return self.make_token(Token::OpenRawInterp(self.make_span()));
+                }
+                // Now check fourth for {{- comment
                 match fourth {
                     Some('-') => {
                         // Handle {{-
@@ -348,13 +356,6 @@ impl<'a> Lexer<'a> {
                         self.advance(); // {
                         self.advance(); // -
                         return self.make_token(Token::OpenComment(self.make_span()));
-                    }
-                    Some('{') => {
-                        // Handle {{{
-                        self.advance(); // {
-                        self.advance(); // {
-                        self.advance(); // {
-                        return self.make_token(Token::OpenRawInterp(self.make_span()));
                     }
                     _ => {
                         // Handle {{
@@ -378,6 +379,16 @@ impl<'a> Lexer<'a> {
             let fourth = lookahead.next();
 
             if second == Some('}') {
+                // Check for }}} before }} (fourth character)
+                if fourth == Some('}') {
+                    // Handle }}} (close raw interpolation)
+                    self.advance(); // }
+                    self.advance(); // }
+                    self.advance(); // }
+                    self.in_interpolation = false;
+                    return self.make_token(Token::CloseRawInterp(self.make_span()));
+                }
+                // Check fourth for --}}
                 match fourth {
                     Some('-') => {
                         // Handle --}}
@@ -386,14 +397,6 @@ impl<'a> Lexer<'a> {
                         self.advance(); // -
                         self.in_interpolation = false;
                         return self.make_token(Token::CloseComment(self.make_span()));
-                    }
-                    Some('}') => {
-                        // Handle }}}
-                        self.advance(); // }
-                        self.advance(); // }
-                        self.advance(); // }
-                        self.in_interpolation = false;
-                        return self.make_token(Token::CloseRawInterp(self.make_span()));
                     }
                     _ => {
                         // Handle }}
@@ -410,14 +413,39 @@ impl<'a> Lexer<'a> {
 
         // Handle @ directive
         if c == '@' {
-            self.advance();
-            match self.peek() {
-                Some(&'!') => {
-                    self.advance();
-                    return self.make_token(Token::Bang(self.make_span()));
+            self.advance(); // consume @
+                            // Check if this is @end
+            let mut lookahead = self.chars.clone();
+            let next = lookahead.next();
+
+            if next == Some('e') {
+                // Check for 'end'
+                let mut end_check = self.chars.clone();
+                let e = end_check.next();
+                let n = end_check.next();
+                let d = end_check.next();
+                let rest = end_check.next();
+
+                if e == Some('e') && n == Some('n') && d == Some('d') {
+                    // Make sure it's a word boundary (not followed by alphanumeric)
+                    if !rest.map_or(false, |c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+                        // This is @end
+                        self.advance(); // e
+                        self.advance(); // n
+                        self.advance(); // d
+                        return self.make_token(Token::End(self.make_span()));
+                    }
                 }
-                _ => return self.make_token(Token::At(self.make_span())),
             }
+
+            // Not @end, return At token
+            return self.make_token(Token::At(self.make_span()));
+        }
+
+        // Handle ! as separate token (for closing directives @!)
+        if c == '!' {
+            self.advance();
+            return self.make_token(Token::Bang(self.make_span()));
         }
 
         // Handle string literals
@@ -554,5 +582,21 @@ mod tests {
         } else {
             panic!("Expected Ident token");
         }
+    }
+
+    #[test]
+    fn test_closing_directive() {
+        let tokens = Lexer::tokenize("@!if");
+        assert!(matches!(&tokens[0], Token::At(_)));
+        assert!(matches!(&tokens[1], Token::Bang(_)));
+        assert!(matches!(&tokens[2], Token::Ident(_, s) if s == "if"));
+    }
+
+    #[test]
+    fn test_closing_each() {
+        let tokens = Lexer::tokenize("@!each");
+        assert!(matches!(&tokens[0], Token::At(_)));
+        assert!(matches!(&tokens[1], Token::Bang(_)));
+        assert!(matches!(&tokens[2], Token::Ident(_, s) if s == "each"));
     }
 }

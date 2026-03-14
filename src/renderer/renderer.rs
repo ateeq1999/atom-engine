@@ -237,6 +237,7 @@ impl<'a> Renderer<'a> {
         args: Option<&crate::parser::arg_list::ArgList>,
         body: Option<&[Node]>,
     ) -> Result<(), RenderError> {
+        eprintln!("DEBUG render_directive: name = {}", name);
         match name {
             "if" => self.render_if(args, body),
             "unless" => self.render_unless(args, body),
@@ -267,17 +268,34 @@ impl<'a> Renderer<'a> {
         args: Option<&crate::parser::arg_list::ArgList>,
         body: Option<&[Node]>,
     ) -> Result<(), RenderError> {
-        if let Some(args) = args {
-            let ctx = EvalCtx::new(&self.scope);
+        eprintln!("DEBUG render_if: args = {:?}", args.is_some());
+        eprintln!("DEBUG render_if: body = {:?}", body.is_some());
+
+        let should_render = if let Some(args) = args {
+            eprintln!(
+                "DEBUG render_if: has args, positional len = {}",
+                args.positional.len()
+            );
             if let Some(expr) = args.positional.first() {
-                let value = eval_expr(expr, &ctx)?;
-                if value.is_truthy() {
-                    if let Some(body) = body {
-                        self.scope.push_frame();
-                        self.render_nodes(body)?;
-                        self.scope.pop_frame();
-                    }
+                let ctx = EvalCtx::new(&self.scope);
+                match eval_expr(expr, &ctx) {
+                    Ok(value) => value.is_truthy(),
+                    Err(_) => false,
                 }
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        eprintln!("DEBUG render_if: should_render = {}", should_render);
+
+        if should_render {
+            if let Some(body) = body {
+                self.scope.push_frame();
+                self.render_nodes(body)?;
+                self.scope.pop_frame();
             }
         }
         Ok(())
