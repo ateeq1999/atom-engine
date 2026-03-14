@@ -222,12 +222,10 @@ impl Atom {
 
         ctx.insert("__atom_components", &self.components.list_components());
 
-        self.tera
-            .render(template, &ctx)
-            .map_err(|e| Error::Render {
-                template: template.to_string(),
-                message: e.to_string(),
-            })
+        self.tera.render(template, &ctx).map_err(|e| Error::Render {
+            template: template.to_string(),
+            message: e.to_string(),
+        })
     }
 
     pub fn render_with_components(
@@ -246,16 +244,37 @@ impl Atom {
             }
         }
 
-        self.tera
-            .render(template, &ctx)
-            .map_err(|e| Error::Render {
-                template: template.to_string(),
-                message: e.to_string(),
-            })
+        self.tera.render(template, &ctx).map_err(|e| Error::Render {
+            template: template.to_string(),
+            message: e.to_string(),
+        })
     }
 
     pub fn provide(&mut self, key: &str, value: Value) {
         self.context_chain.provide(key, value);
+    }
+
+    pub fn reload(&mut self) -> std::result::Result<(), Error> {
+        self.tera.full_reload().map_err(|e| Error::TemplateLoad {
+            path: "reload".to_string(),
+            message: e.to_string(),
+        })
+    }
+
+    pub fn template_exists(&self, name: &str) -> bool {
+        self.tera.get_template(name).is_ok()
+    }
+
+    pub fn get_registered_templates(&self) -> Vec<String> {
+        self.tera
+            .get_template_names()
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect()
+    }
+
+    pub fn clear_cache(&mut self) {
+        self.tera.templates.clear();
     }
 }
 

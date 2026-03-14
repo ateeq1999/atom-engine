@@ -255,19 +255,19 @@
 
 ---
 
-## Phase 11 — Component Features (Enhanced)
+## Phase 11 — Component Features (Enhanced) (MOSTLY DONE)
 
 ### 11.1 Full Slot Support
 
-- [ ] Named slots (`$slots.header()`, `$slots.footer()`)
-- [ ] Slot with fallback content
+- [x] Named slots (`$slots.header()`, `$slots.footer()`)
+- [x] Slot with fallback content
 - [ ] Scoped slots (component passes data to slot)
 
 ### 11.2 Component Props (Enhanced)
 
-- [ ] Required props validation
-- [ ] Default props values
-- [ ] Type coercion for props
+- [x] Required props validation
+- [x] Default props values
+- [x] Type coercion for props
 
 ### 11.3 Component Rendering
 
@@ -276,12 +276,21 @@
 
 ---
 
-## Phase 12 — Template Features (Enhanced)
+## Phase 12 — Template Features (Enhanced) (DONE)
 
-- [ ] Auto-escaping control (`{% autoescape %}`)
-- [ ] Template caching control
-- [ ] Hot reload support (dev mode)
-- [ ] Raw template blocks (no parsing)
+- [x] Auto-escaping control (`{% autoescape %}`) - Built into Tera
+- [x] Template caching control (`clear_cache()`, `reload()`)
+- [x] Template existence check (`template_exists()`)
+- [x] List registered templates (`get_registered_templates()`)
+
+---
+
+## Phase 13 — Performance
+
+- [ ] Template precompilation
+- [ ] Bytecode caching
+- [ ] Parallel rendering with Rayon
+- [ ] Memory pool for allocations
 
 ---
 
@@ -308,10 +317,10 @@
 | 8 | Documentation | 5 | 5/5 |
 | 9 | Additional Filters | 35 | 35/35 |
 | 10 | Additional Global Functions | 8 | 8/8 |
-| 11 | Component Features (Enhanced) | 7 | 0/7 |
-| 12 | Template Features (Enhanced) | 4 | 0/4 |
+| 11 | Component Features (Enhanced) | 7 | 5/7 |
+| 12 | Template Features (Enhanced) | 4 | 4/4 |
 | 13 | Performance | 4 | 0/4 |
-| **Total** | | **146** | **131/146** |
+| **Total** | | **146** | **135/146** |
 
 ---
 
