@@ -1,3 +1,33 @@
+//! Atom Engine - A component-oriented template engine for Rust
+//! 
+//! # Overview
+//! 
+//! Atom Engine is a high-performance template engine built on Tera with additional
+//! features like components, props, slots, and provide/inject context.
+//! 
+//! # Features
+//! 
+//! - Built on Tera for robust template parsing and rendering
+//! - Component system with props, slots, and validation
+//! - Provide/Inject context (React-style)
+//! - Stack system for content accumulation
+//! - 50+ built-in filters
+//! - Helper directives (@map, @filter, @each, @reduce)
+//! - Async and parallel rendering support
+//! - Component caching
+//! 
+//! # Quick Start
+//! 
+//! ```rust
+//! use atom_engine::Atom;
+//! use serde_json::json;
+//! 
+//! let mut engine = Atom::new();
+//! engine.add_template("hello.html", "Hello, {{ name }}!").unwrap();
+//! let result = engine.render("hello.html", &json!({"name": "World"})).unwrap();
+//! assert_eq!(result, "Hello, World!");
+//! ```
+
 pub mod filters;
 
 use glob::glob;
@@ -23,6 +53,22 @@ thread_local! {
     static COMPONENT_RENDERER: RefCell<Option<Rc<RefCell<ComponentRenderer>>>> = const { RefCell::new(None) };
 }
 
+/// The main template engine struct.
+///
+/// Atom provides methods for creating templates, registering components,
+/// rendering templates, and managing context.
+///
+/// # Example
+///
+/// ```rust
+/// use atom_engine::Atom;
+/// use serde_json::json;
+///
+/// let mut engine = Atom::new();
+/// engine.add_template("greeting.html", "Hello, {{ name }}!").unwrap();
+/// let result = engine.render("greeting.html", &json!({"name": "Alice"})).unwrap();
+/// assert_eq!(result, "Hello, Alice!");
+/// ```
 #[derive(Clone)]
 pub struct Atom {
     tera: Tera,
@@ -34,6 +80,15 @@ pub struct Atom {
 }
 
 impl Atom {
+    /// Creates a new Atom engine instance with all built-in filters and functions registered.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use atom_engine::Atom;
+    ///
+    /// let engine = Atom::new();
+    /// ```
     pub fn new() -> Self {
         let mut tera = Tera::default();
 
@@ -167,6 +222,18 @@ impl Atom {
         }
     }
 
+    /// Loads templates from the filesystem using a glob pattern.
+    ///
+    /// # Arguments
+    ///
+    /// * `glob_pattern` - A glob pattern to match template files (e.g., "templates/**/*.html")
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let mut engine = atom_engine::Atom::new();
+    /// engine.load_templates("templates/**/*.html").unwrap();
+    /// ```
     pub fn load_templates(&mut self, glob_pattern: &str) -> std::result::Result<(), Error> {
         let template_files: Vec<(std::path::PathBuf, Option<String>)> = glob(glob_pattern)
             .map_err(|e| Error::TemplateLoad {
@@ -193,6 +260,19 @@ impl Atom {
         Ok(())
     }
 
+    /// Adds a raw template to the engine.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The template name (e.g., "index.html")
+    /// * `content` - The template content
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let mut engine = atom_engine::Atom::new();
+    /// engine.add_template("hello.html", "Hello, {{ name }}!").unwrap();
+    /// ```
     pub fn add_template(&mut self, name: &str, content: &str) -> std::result::Result<(), Error> {
         self.tera
             .add_raw_template(name, content)
@@ -203,6 +283,19 @@ impl Atom {
         Ok(())
     }
 
+    /// Registers a reusable component.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Component path/name (e.g., "button")
+    /// * `template` - Component template content
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let mut engine = atom_engine::Atom::new();
+    /// engine.register_component("button", "<button>{{ text }}</button>").unwrap();
+    /// ```
     pub fn register_component(
         &mut self,
         path: &str,
@@ -211,6 +304,12 @@ impl Atom {
         self.components.register(path, template)
     }
 
+    /// Registers a custom filter.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - Filter name
+    /// * `filter` - The filter function
     pub fn register_filter<F>(&mut self, name: &str, filter: F)
     where
         F: Filter + Send + Sync + 'static,
@@ -218,6 +317,12 @@ impl Atom {
         self.tera.register_filter(name, filter);
     }
 
+    /// Registers a custom global function.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - Function name
+    /// * `function` - The function to register
     pub fn register_function<F>(&mut self, name: &str, function: F)
     where
         F: Function + Send + Sync + 'static,
@@ -225,14 +330,38 @@ impl Atom {
         self.tera.register_function(name, function);
     }
 
+    /// Sets the maximum number of iterations for loops.
+    ///
+    /// This prevents infinite loops in templates.
     pub fn set_max_loop_iter(&mut self, max: usize) {
         self.max_loop_iter = max;
     }
 
+    /// Sets debug mode for the engine.
+    ///
+    /// When enabled, additional debugging information may be logged.
     pub fn set_debug(&mut self, debug: bool) {
         self.debug = debug;
     }
 
+    /// Renders a template with the given context.
+    ///
+    /// # Arguments
+    ///
+    /// * `template` - The template name to render
+    /// * `context` - The context data as a JSON value
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use atom_engine::Atom;
+    /// use serde_json::json;
+    ///
+    /// let mut engine = Atom::new();
+    /// engine.add_template("greeting.html", "Hello, {{ name }}!").unwrap();
+    /// let result = engine.render("greeting.html", &json!({"name": "World"})).unwrap();
+    /// assert_eq!(result, "Hello, World!");
+    /// ```
     pub fn render(&self, template: &str, context: &Value) -> Result<String, Error> {
         let mut ctx = Context::from_serialize(context).map_err(|e| Error::Context {
             message: e.to_string(),
@@ -250,6 +379,16 @@ impl Atom {
         })
     }
 
+    /// Renders a template with component data included in the context.
+    ///
+    /// This is useful when you want to pass additional component-specific data
+    /// alongside the regular context.
+    ///
+    /// # Arguments
+    ///
+    /// * `template` - The template name to render
+    /// * `context` - The context data as a JSON value
+    /// * `component_data` - Additional component-specific data
     pub fn render_with_components(
         &self,
         template: &str,
@@ -272,10 +411,35 @@ impl Atom {
         })
     }
 
+    /// Provides a value to the context chain.
+    ///
+    /// This implements a provide/inject pattern (similar to Vue.js) where
+    /// values can be provided at a higher level and injected in child components.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The context key
+    /// * `value` - The value to provide
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use atom_engine::Atom;
+    /// use serde_json::json;
+    ///
+    /// let mut engine = Atom::new();
+    /// engine.add_template("child.html", "{{ theme }}").unwrap();
+    /// engine.provide("theme", json!("dark"));
+    /// let result = engine.render("child.html", &json!({})).unwrap();
+    /// assert_eq!(result, "dark");
+    /// ```
     pub fn provide(&mut self, key: &str, value: Value) {
         self.context_chain.provide(key, value);
     }
 
+    /// Reloads all templates from the filesystem.
+    ///
+    /// This is useful during development when templates change on disk.
     pub fn reload(&mut self) -> std::result::Result<(), Error> {
         self.tera.full_reload().map_err(|e| Error::TemplateLoad {
             path: "reload".to_string(),
@@ -283,10 +447,24 @@ impl Atom {
         })
     }
 
+    /// Checks if a template exists in the engine.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The template name to check
+    ///
+    /// # Returns
+    ///
+    /// `true` if the template exists, `false` otherwise
     pub fn template_exists(&self, name: &str) -> bool {
         self.tera.get_template(name).is_ok()
     }
 
+    /// Gets a list of all registered template names.
+    ///
+    /// # Returns
+    ///
+    /// A vector of template names
     pub fn get_registered_templates(&self) -> Vec<String> {
         self.tera
             .get_template_names()
@@ -294,34 +472,60 @@ impl Atom {
             .collect()
     }
 
+    /// Clears the template cache.
+    ///
+    /// This forces templates to be re-parsed on next render.
     pub fn clear_cache(&mut self) {
         self.tera.templates.clear();
     }
 
+    /// Enables or disables parallel rendering.
+    ///
+    /// When enabled with the `parallel` feature, multiple templates can be
+    /// rendered concurrently using Rayon.
     pub fn set_parallel(&mut self, enabled: bool) {
         self.use_parallel = enabled;
     }
 
+    /// Returns whether parallel rendering is enabled.
     pub fn is_parallel(&self) -> bool {
         self.use_parallel
     }
 
+    /// Enables or disables component caching.
+    ///
+    /// When enabled, rendered components are cached based on their props hash.
     pub fn enable_component_cache(&mut self, enabled: bool) {
         self.components.enable_cache(enabled);
     }
 
+    /// Returns whether component caching is enabled.
     pub fn is_component_cache_enabled(&self) -> bool {
         self.components.is_cache_enabled()
     }
 
+    /// Clears the component cache.
     pub fn clear_component_cache(&mut self) {
         self.components.clear_cache();
     }
 
+    /// Returns the number of cached component renders.
     pub fn component_cache_len(&self) -> usize {
         self.components.cache_len()
     }
 
+    /// Renders multiple templates in parallel (when the `parallel` feature is enabled).
+    ///
+    /// Requires the `parallel` feature to be enabled. Without it, templates
+    /// are rendered sequentially.
+    ///
+    /// # Arguments
+    ///
+    /// * `templates` - A slice of template name and context pairs
+    ///
+    /// # Returns
+    ///
+    /// A vector of (template_name, rendered_output) pairs
     #[cfg(feature = "parallel")]
     pub fn render_many(
         &self,
@@ -344,6 +548,9 @@ impl Atom {
         Ok(output)
     }
 
+    /// Renders multiple templates sequentially.
+    ///
+    /// This is the fallback implementation when the `parallel` feature is not enabled.
     #[cfg(not(feature = "parallel"))]
     pub fn render_many(
         &self,
@@ -357,6 +564,27 @@ impl Atom {
         Ok(results)
     }
 
+    /// Renders a template asynchronously.
+    ///
+    /// Requires the `async` feature to be enabled.
+    ///
+    /// # Arguments
+    ///
+    /// * `template` - The template name to render
+    /// * `context` - The context data as a JSON value
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// #[cfg(feature = "async")]
+    /// async fn render_template() {
+    ///     use atom_engine::Atom;
+    ///     use serde_json::json;
+    ///
+    ///     let engine = Atom::new();
+    ///     let result = engine.render_async("hello.html", &json!({"name": "World"})).await;
+    /// }
+    /// ```
     #[cfg(feature = "async")]
     pub async fn render_async(&self, template: &str, context: &Value) -> Result<String, Error> {
         let template = template.to_string();
@@ -383,6 +611,17 @@ impl Atom {
         })?
     }
 
+    /// Renders multiple templates asynchronously.
+    ///
+    /// Requires the `async` feature to be enabled.
+    ///
+    /// # Arguments
+    ///
+    /// * `templates` - A slice of template name and context pairs
+    ///
+    /// # Returns
+    ///
+    /// A vector of (template_name, rendered_output) pairs
     #[cfg(feature = "async")]
     pub async fn render_many_async(
         &self,

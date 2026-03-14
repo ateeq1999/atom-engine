@@ -1,5 +1,11 @@
+//! Error types for Atom Engine.
+//!
+//! This module defines all error types that can occur during
+//! template loading, parsing, rendering, and component operations.
+
 use thiserror::Error;
 
+/// All error types that can occur in Atom Engine.
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Failed to load templates from {path}: {message}")]

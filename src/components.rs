@@ -1,3 +1,12 @@
+//! Component system for Atom Engine.
+//!
+//! This module provides the component infrastructure including:
+//! - Component registration and management
+//! - Props validation
+//! - Slot handling
+//! - Component caching
+//! - Scoped slots support
+
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -7,6 +16,9 @@ use serde_json::Value;
 
 use crate::error::Result;
 
+/// Computes a hash for component props.
+///
+/// Used for component caching to generate cache keys.
 pub fn compute_props_hash(props: &Value) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     let json_str = serde_json::to_string(props).unwrap_or_default();
@@ -14,6 +26,7 @@ pub fn compute_props_hash(props: &Value) -> u64 {
     hasher.finish()
 }
 
+/// Computes a cache key from component path and props hash.
 pub fn compute_cache_key(path: &str, props_hash: u64) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     path.hash(&mut hasher);
@@ -21,6 +34,9 @@ pub fn compute_cache_key(path: &str, props_hash: u64) -> u64 {
     hasher.finish()
 }
 
+/// The type of a component prop.
+///
+/// Used for props validation to ensure type safety.
 #[derive(Debug, Clone, PartialEq)]
 pub enum PropType {
     String,
@@ -32,6 +48,9 @@ pub enum PropType {
 }
 
 impl PropType {
+    /// Creates a PropType from a string representation.
+    ///
+    /// Supported types: "string", "number", "boolean", "array", "object", "any"
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
         match s.to_lowercase().as_str() {
@@ -44,6 +63,7 @@ impl PropType {
         }
     }
 
+    /// Checks if a value matches this prop type.
     pub fn matches(&self, value: &Value) -> bool {
         match self {
             PropType::Any => true,
@@ -56,6 +76,7 @@ impl PropType {
     }
 }
 
+/// Definition of a component prop.
 #[derive(Debug, Clone)]
 pub struct PropDef {
     pub name: String,
@@ -65,6 +86,11 @@ pub struct PropDef {
 }
 
 impl PropDef {
+    /// Validates a prop value against this definition.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value is null but required, or if the type doesn't match.
     pub fn validate(&self, value: &Value) -> std::result::Result<(), String> {
         if value.is_null() && self.required {
             return Err(format!("Required prop '{}' is null", self.name));
@@ -88,6 +114,7 @@ impl PropDef {
     }
 }
 
+/// A registered component with its template and prop definitions.
 #[derive(Debug, Clone)]
 pub struct Component {
     pub path: String,
@@ -98,12 +125,14 @@ pub struct Component {
     pub scoped_slots: Vec<ScopedSlotDef>,
 }
 
+/// Definition of a scoped slot.
 #[derive(Debug, Clone)]
 pub struct ScopedSlotDef {
     pub name: String,
     pub props: Vec<String>,
 }
 
+/// Data for slot rendering.
 #[derive(Debug, Clone, Default)]
 pub struct SlotData {
     pub fills: IndexMap<String, String>,
@@ -111,6 +140,9 @@ pub struct SlotData {
     pub scoped_data: HashMap<String, Value>,
 }
 
+/// Runtime component renderer that manages slot content and stack buffers.
+///
+/// Used during template rendering to accumulate and manage component content.
 #[derive(Clone, Default)]
 pub struct ComponentRenderer {
     stack_buffers: HashMap<String, Vec<String>>,
@@ -119,6 +151,7 @@ pub struct ComponentRenderer {
 }
 
 impl ComponentRenderer {
+    /// Creates a new ComponentRenderer.
     pub fn new() -> Self {
         ComponentRenderer {
             stack_buffers: HashMap::new(),
@@ -127,6 +160,7 @@ impl ComponentRenderer {
         }
     }
 
+    /// Pushes content onto a stack buffer.
     pub fn push(&mut self, name: &str, content: String) {
         self.stack_buffers
             .entry(name.to_string())
@@ -134,6 +168,7 @@ impl ComponentRenderer {
             .push(content);
     }
 
+    /// Prepends content to a stack buffer.
     pub fn prepend(&mut self, name: &str, content: String) {
         self.stack_buffers
             .entry(name.to_string())
@@ -141,6 +176,7 @@ impl ComponentRenderer {
             .insert(0, content);
     }
 
+    /// Drains and returns all content from a stack buffer, removing it.
     pub fn drain(&mut self, name: &str) -> String {
         self.stack_buffers
             .remove(name)
@@ -148,10 +184,12 @@ impl ComponentRenderer {
             .unwrap_or_default()
     }
 
+    /// Peeks at the content of a stack buffer without removing it.
     pub fn peek(&self, name: &str) -> Option<String> {
         self.stack_buffers.get(name).map(|v| v.join("\n"))
     }
 
+    /// Sets the fill content for a slot.
     pub fn set_slot_fill(&mut self, slot_name: &str, content: String) {
         let slot_name = slot_name.trim_start_matches('$').to_string();
         let slot = self.slot_data.entry(slot_name.clone()).or_default();
@@ -162,6 +200,7 @@ impl ComponentRenderer {
         }
     }
 
+    /// Gets the fill content for a slot.
     pub fn get_slot(&self, name: &str) -> Option<String> {
         let name = name.trim_start_matches('$').to_string();
         if name == "default" || name.is_empty() {
@@ -175,6 +214,7 @@ impl ComponentRenderer {
         }
     }
 
+    /// Checks if a slot has fill content.
     pub fn has_slot(&self, name: &str) -> bool {
         let name = name.trim_start_matches('$').to_string();
         if name == "default" || name.is_empty() {
@@ -190,17 +230,22 @@ impl ComponentRenderer {
         }
     }
 
+    /// Sets scoped data for a slot.
     pub fn set_scoped_data(&mut self, slot_name: &str, key: &str, value: Value) {
         let slot_name = slot_name.trim_start_matches('$').to_string();
         let slot = self.slot_data.entry(slot_name).or_default();
         slot.scoped_data.insert(key.to_string(), value);
     }
 
+    /// Gets scoped data for a slot.
     pub fn get_scoped_data(&self, slot_name: &str) -> Option<HashMap<String, Value>> {
         let name = slot_name.trim_start_matches('$').to_string();
         self.slot_data.get(&name).map(|s| s.scoped_data.clone())
     }
 
+    /// Returns true if the key has not been rendered yet, then marks it as rendered.
+    ///
+    /// Used for the `once` directive to ensure content renders only once.
     pub fn once(&mut self, key: u64) -> bool {
         if self.once_rendered.contains(&key) {
             return false;
@@ -209,12 +254,14 @@ impl ComponentRenderer {
         true
     }
 
+    /// Resets the renderer, clearing all buffers and slot data.
     pub fn reset(&mut self) {
         self.stack_buffers.clear();
         self.slot_data.clear();
     }
 }
 
+/// Registry for managing component templates.
 #[derive(Clone, Default)]
 pub struct ComponentRegistry {
     components: HashMap<String, Component>,
@@ -222,11 +269,13 @@ pub struct ComponentRegistry {
     cache_enabled: bool,
 }
 
+/// Cache for rendered components.
 #[derive(Default)]
 pub struct ComponentCache {
     entries: HashMap<u64, CachedRender>,
 }
 
+/// A cached component render.
 #[derive(Clone)]
 pub struct CachedRender {
     pub html: String,
@@ -235,34 +284,41 @@ pub struct CachedRender {
 }
 
 impl ComponentCache {
+    /// Creates a new empty ComponentCache.
     pub fn new() -> Self {
         ComponentCache {
             entries: HashMap::new(),
         }
     }
 
+    /// Gets a cached render by key.
     pub fn get(&self, key: &u64) -> Option<String> {
         self.entries.get(key).map(|c| c.html.clone())
     }
 
+    /// Inserts a cached render.
     pub fn insert(&mut self, key: u64, html: String, props_hash: u64) {
         self.entries.insert(key, CachedRender { html, props_hash });
     }
 
+    /// Clears all cached entries.
     pub fn clear(&mut self) {
         self.entries.clear();
     }
 
+    /// Returns the number of cached entries.
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
+    /// Returns true if the cache is empty.
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
 }
 
 impl ComponentRegistry {
+    /// Creates a new ComponentRegistry.
     pub fn new() -> Self {
         ComponentRegistry {
             components: HashMap::new(),
@@ -271,6 +327,7 @@ impl ComponentRegistry {
         }
     }
 
+    /// Registers a component with its template.
     pub fn register(&mut self, path: &str, template: &str) -> Result<()> {
         let props = Self::parse_props(template);
         let (slots, optional_slots) = Self::parse_slots(template);
@@ -291,10 +348,15 @@ impl ComponentRegistry {
         Ok(())
     }
 
+    /// Gets a component by path.
     pub fn get(&self, path: &str) -> Option<&Component> {
         self.components.get(path)
     }
 
+    /// Resolves a tag name to a component path.
+    ///
+    /// Tries multiple variations: exact match, with "components/" prefix,
+    /// with ".html" extension, and nested paths.
     pub fn resolve_tag(&self, tag: &str) -> Option<String> {
         if self.components.contains_key(tag) {
             return Some(tag.to_string());
@@ -321,10 +383,16 @@ impl ComponentRegistry {
         None
     }
 
+    /// Lists all registered component paths.
     pub fn list_components(&self) -> Vec<String> {
         self.components.keys().cloned().collect()
     }
 
+    /// Validates props against a component's prop definitions.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a required prop is missing or a prop has an invalid type.
     pub fn validate_props(
         &self,
         path: &str,
@@ -352,14 +420,17 @@ impl ComponentRegistry {
         Ok(result)
     }
 
+    /// Enables or disables component caching.
     pub fn enable_cache(&mut self, enabled: bool) {
         self.cache_enabled = enabled;
     }
 
+    /// Returns whether caching is enabled.
     pub fn is_cache_enabled(&self) -> bool {
         self.cache_enabled
     }
 
+    /// Gets a cached render.
     pub fn get_cached(&self, key: u64) -> Option<String> {
         if !self.cache_enabled {
             return None;
@@ -367,6 +438,7 @@ impl ComponentRegistry {
         self.cache.read().ok()?.get(&key)
     }
 
+    /// Stores a render in the cache.
     pub fn set_cached(&self, key: u64, html: String, props_hash: u64) {
         if !self.cache_enabled {
             return;
@@ -376,12 +448,14 @@ impl ComponentRegistry {
         }
     }
 
+    /// Clears the component cache.
     pub fn clear_cache(&self) {
         if let Ok(mut cache) = self.cache.write() {
             cache.clear();
         }
     }
 
+    /// Returns the number of cached entries.
     pub fn cache_len(&self) -> usize {
         self.cache.read().map(|c| c.len()).unwrap_or(0)
     }
