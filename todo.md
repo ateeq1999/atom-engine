@@ -199,6 +199,101 @@
 
 ---
 
+## Phase 9 — Additional Filters (DONE)
+
+### 9.1 String Filters
+
+- [x] `replace(old, new)` - Replace substring
+- [x] `remove(string)` - Remove substring
+- [x] `prepend(string)` - Prepend to string
+- [x] `append(string)` - Append to string
+- [x] `strip` - Trim whitespace
+- [x] `nl2br` - Newlines to `<br>`
+- [x] `word_count` - Count words
+- [x] `char_count` - Count characters
+- [x] `starts_with(prefix)` - Check prefix
+- [x] `ends_with(suffix)` - Check suffix
+- [x] `contains(substring)` - Check contains
+
+### 9.2 Collection Filters
+
+- [x] `join(separator)` - Join array with separator
+- [x] `slice(start, length)` - Array/string slice
+- [x] `uniq` - Unique array items
+- [x] `shuffle` - Random shuffle array
+
+### 9.3 Encoding Filters
+
+- [x] `json_decode` - Parse JSON string
+- [x] `urlescape` - URL encode
+- [x] `urlunescape` - URL decode
+- [x] `strip_tags` - Remove HTML tags
+- [x] `base64_encode` - Base64 encode
+- [x] `base64_decode` - Base64 decode
+
+### 9.4 Math Filters
+
+- [x] `min` - Minimum value
+- [x] `max` - Maximum value
+- [x] `sum` - Sum of array
+- [x] `avg` - Average of array
+- [x] `ceil` - Ceiling
+- [x] `floor` - Floor
+
+---
+
+## Phase 10 — Additional Global Functions (DONE)
+
+- [x] `cycle(values...)` - Cycle through values on each render
+- [x] `uuid()` - Generate UUID
+- [x] `random(min, max)` - Random number
+- [x] `choice(array)` - Random array item
+- [x] `file_exists(path)` - Check file exists
+- [x] `env(key)` - Get environment variable
+- [x] `md5(string)` - MD5 hash
+- [x] `sha256(string)` - SHA256 hash
+
+---
+
+## Phase 11 — Component Features (Enhanced)
+
+### 11.1 Full Slot Support
+
+- [ ] Named slots (`$slots.header()`, `$slots.footer()`)
+- [ ] Slot with fallback content
+- [ ] Scoped slots (component passes data to slot)
+
+### 11.2 Component Props (Enhanced)
+
+- [ ] Required props validation
+- [ ] Default props values
+- [ ] Type coercion for props
+
+### 11.3 Component Rendering
+
+- [ ] Component caching
+- [ ] Async component support
+
+---
+
+## Phase 12 — Template Features (Enhanced)
+
+- [ ] Auto-escaping control (`{% autoescape %}`)
+- [ ] Template caching control
+- [ ] Hot reload support (dev mode)
+- [ ] Raw template blocks (no parsing)
+
+---
+
+## Phase 13 — Performance
+
+- [ ] Template precompilation
+- [ ] Bytecode caching
+- [ ] Parallel rendering with Rayon
+- [ ] Memory pool for allocations
+
+---
+
 ## Checklist Summary
 
 | Phase | Description | Tasks | Done |
@@ -211,7 +306,12 @@
 | 6 | Template Features | 6 | 6/6 |
 | 7 | Testing | 12 | 12/12 |
 | 8 | Documentation | 5 | 5/5 |
-| **Total** | | **88** | **88/88** |
+| 9 | Additional Filters | 35 | 35/35 |
+| 10 | Additional Global Functions | 8 | 8/8 |
+| 11 | Component Features (Enhanced) | 7 | 0/7 |
+| 12 | Template Features (Enhanced) | 4 | 0/4 |
+| 13 | Performance | 4 | 0/4 |
+| **Total** | | **146** | **131/146** |
 
 ---
 

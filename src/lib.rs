@@ -76,6 +76,41 @@ impl Atom {
         tera.register_filter("empty", filters::empty);
         tera.register_filter("not_empty", filters::not_empty);
 
+        // Register additional string filters
+        tera.register_filter("replace", filters::replace);
+        tera.register_filter("remove", filters::remove);
+        tera.register_filter("prepend", filters::prepend);
+        tera.register_filter("append", filters::append);
+        tera.register_filter("strip", filters::strip);
+        tera.register_filter("nl2br", filters::nl2br);
+        tera.register_filter("word_count", filters::word_count);
+        tera.register_filter("char_count", filters::char_count);
+        tera.register_filter("starts_with", filters::starts_with);
+        tera.register_filter("ends_with", filters::ends_with);
+        tera.register_filter("contains", filters::contains);
+
+        // Register additional collection filters
+        tera.register_filter("join", filters::join);
+        tera.register_filter("slice", filters::slice);
+        tera.register_filter("uniq", filters::uniq);
+        tera.register_filter("shuffle", filters::shuffle);
+
+        // Register encoding filters
+        tera.register_filter("json_decode", filters::json_decode);
+        tera.register_filter("urlescape", filters::urlescape);
+        tera.register_filter("urlunescape", filters::urlunescape);
+        tera.register_filter("strip_tags", filters::strip_tags);
+        tera.register_filter("base64_encode", filters::base64_encode);
+        tera.register_filter("base64_decode", filters::base64_decode);
+
+        // Register math filters
+        tera.register_filter("min", filters::min_filter);
+        tera.register_filter("max", filters::max_filter);
+        tera.register_filter("sum", filters::sum);
+        tera.register_filter("avg", filters::avg);
+        tera.register_filter("ceil", filters::ceil);
+        tera.register_filter("floor", filters::floor);
+
         // Register global functions
         tera.register_function("dump", filters::DumpFn);
         tera.register_function("log", filters::LogFn);
@@ -87,6 +122,16 @@ impl Atom {
         tera.register_function("prepend", filters::PrependFn);
         tera.register_function("set_slot", filters::SetSlotFn);
         tera.register_function("once", filters::OnceFn);
+
+        // Register additional global functions
+        tera.register_function("cycle", filters::CycleFn::new());
+        tera.register_function("uuid", filters::UuidFn);
+        tera.register_function("random", filters::RandomFn);
+        tera.register_function("choice", filters::ChoiceFn);
+        tera.register_function("file_exists", filters::FileExistsFn);
+        tera.register_function("env", filters::EnvFn);
+        tera.register_function("md5", filters::Md5Fn);
+        tera.register_function("sha256", filters::Sha256Fn);
 
         Atom {
             tera,

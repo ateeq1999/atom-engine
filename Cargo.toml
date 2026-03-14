@@ -38,6 +38,9 @@ hex = "0.4"
 # Random
 rand = "0.8"
 
+# UUID generation
+uuid = { version = "1", features = ["v4"] }
+
 # Fuzzy matching for error suggestions
 strsim = "0.11"
 

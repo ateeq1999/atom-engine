@@ -601,3 +601,434 @@ pub fn not_empty(value: &Value, _: &HashMap<String, Value>) -> Result<Value, ter
     };
     Ok(Value::Bool(!is_empty))
 }
+
+// ===== Phase 9: Additional String Filters =====
+
+pub fn replace(value: &Value, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let s = value
+        .as_str()
+        .ok_or_else(|| tera::Error::msg("Expected string"))?;
+    let old = args.get("old").and_then(|v| v.as_str()).unwrap_or("");
+    let new = args.get("new").and_then(|v| v.as_str()).unwrap_or("");
+    Ok(Value::String(s.replace(old, new)))
+}
+
+pub fn remove(value: &Value, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let s = value
+        .as_str()
+        .ok_or_else(|| tera::Error::msg("Expected string"))?;
+    let to_remove = args.get("string").and_then(|v| v.as_str()).unwrap_or("");
+    Ok(Value::String(s.replace(to_remove, "")))
+}
+
+pub fn prepend(value: &Value, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let s = value
+        .as_str()
+        .ok_or_else(|| tera::Error::msg("Expected string"))?;
+    let prefix = args.get("string").and_then(|v| v.as_str()).unwrap_or("");
+    Ok(Value::String(format!("{}{}", prefix, s)))
+}
+
+pub fn append(value: &Value, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let s = value
+        .as_str()
+        .ok_or_else(|| tera::Error::msg("Expected string"))?;
+    let suffix = args.get("string").and_then(|v| v.as_str()).unwrap_or("");
+    Ok(Value::String(format!("{}{}", s, suffix)))
+}
+
+pub fn strip(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(s) = value.as_str() {
+        Ok(Value::String(s.trim().to_string()))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+pub fn nl2br(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(s) = value.as_str() {
+        let escaped = s
+            .replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+            .replace('\n', "<br>\n");
+        Ok(Value::String(escaped))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+pub fn word_count(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(s) = value.as_str() {
+        let count = s.split_whitespace().count();
+        Ok(Value::Number(count.into()))
+    } else {
+        Ok(Value::Number(0.into()))
+    }
+}
+
+pub fn char_count(value: &Value, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(s) = value.as_str() {
+        let include_spaces = args
+            .get("include_spaces")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
+        let count = if include_spaces {
+            s.chars().count()
+        } else {
+            s.replace(' ', "").chars().count()
+        };
+        Ok(Value::Number(count.into()))
+    } else {
+        Ok(Value::Number(0.into()))
+    }
+}
+
+pub fn starts_with(value: &Value, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let s = value
+        .as_str()
+        .ok_or_else(|| tera::Error::msg("Expected string"))?;
+    let prefix = args.get("prefix").and_then(|v| v.as_str()).unwrap_or("");
+    Ok(Value::Bool(s.starts_with(prefix)))
+}
+
+pub fn ends_with(value: &Value, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let s = value
+        .as_str()
+        .ok_or_else(|| tera::Error::msg("Expected string"))?;
+    let suffix = args.get("suffix").and_then(|v| v.as_str()).unwrap_or("");
+    Ok(Value::Bool(s.ends_with(suffix)))
+}
+
+pub fn contains(value: &Value, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let s = value
+        .as_str()
+        .ok_or_else(|| tera::Error::msg("Expected string"))?;
+    let substring = args.get("substring").and_then(|v| v.as_str()).unwrap_or("");
+    Ok(Value::Bool(s.contains(substring)))
+}
+
+// ===== Collection Filters =====
+
+pub fn join(value: &Value, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let sep = args
+        .get("separator")
+        .and_then(|v| v.as_str())
+        .unwrap_or(",");
+    if let Some(arr) = value.as_array() {
+        let joined = arr
+            .iter()
+            .map(|v| v.as_str().unwrap_or(""))
+            .collect::<Vec<_>>()
+            .join(sep);
+        Ok(Value::String(joined))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+pub fn slice(value: &Value, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let start = args.get("start").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+    let length = args.get("length").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
+
+    if let Some(arr) = value.as_array() {
+        let slice: Vec<Value> = arr.iter().skip(start).take(length).cloned().collect();
+        Ok(Value::Array(slice))
+    } else if let Some(s) = value.as_str() {
+        let chars: String = s.chars().skip(start).take(length).collect();
+        Ok(Value::String(chars))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+pub fn uniq(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(arr) = value.as_array() {
+        let mut seen = std::collections::HashSet::new();
+        let unique: Vec<Value> = arr
+            .iter()
+            .filter(|v| seen.insert(v.to_string()))
+            .cloned()
+            .collect();
+        Ok(Value::Array(unique))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+pub fn shuffle(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    use rand::seq::SliceRandom;
+    use rand::thread_rng;
+
+    if let Some(arr) = value.as_array() {
+        let mut shuffled = arr.clone();
+        let mut rng = thread_rng();
+        shuffled.shuffle(&mut rng);
+        Ok(Value::Array(shuffled))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+// ===== Encoding Filters =====
+
+pub fn json_decode(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    let s = value
+        .as_str()
+        .ok_or_else(|| tera::Error::msg("Expected string"))?;
+    serde_json::from_str(s).map_err(|e| tera::Error::msg(e.to_string()))
+}
+
+pub fn urlescape(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(s) = value.as_str() {
+        Ok(Value::String(urlencoding::encode(s).to_string()))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+pub fn urlunescape(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(s) = value.as_str() {
+        Ok(Value::String(
+            urlencoding::decode(s)
+                .map_err(|e| tera::Error::msg(e.to_string()))?
+                .to_string(),
+        ))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+pub fn strip_tags(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(s) = value.as_str() {
+        let re = regex::Regex::new(r"<[^>]*>").unwrap();
+        Ok(Value::String(re.replace_all(s, "").to_string()))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+pub fn base64_encode(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(s) = value.as_str() {
+        Ok(Value::String(base64::Engine::encode(
+            &base64::engine::general_purpose::STANDARD,
+            s,
+        )))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+pub fn base64_decode(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(s) = value.as_str() {
+        let decoded = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, s)
+            .map_err(|e| tera::Error::msg(e.to_string()))?;
+        Ok(Value::String(
+            String::from_utf8(decoded).map_err(|e| tera::Error::msg(e.to_string()))?,
+        ))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+// ===== Math Filters =====
+
+pub fn min_filter(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(arr) = value.as_array() {
+        let min = arr
+            .iter()
+            .filter_map(|v| v.as_f64())
+            .fold(f64::INFINITY, f64::min);
+        Ok(Value::Number(
+            serde_json::Number::from_f64(min).unwrap_or(serde_json::Number::from(0)),
+        ))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+pub fn max_filter(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(arr) = value.as_array() {
+        let max = arr
+            .iter()
+            .filter_map(|v| v.as_f64())
+            .fold(f64::NEG_INFINITY, f64::max);
+        Ok(Value::Number(
+            serde_json::Number::from_f64(max).unwrap_or(serde_json::Number::from(0)),
+        ))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+pub fn sum(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(arr) = value.as_array() {
+        let total: f64 = arr.iter().filter_map(|v| v.as_f64()).sum();
+        Ok(Value::Number(
+            serde_json::Number::from_f64(total).unwrap_or(serde_json::Number::from(0)),
+        ))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+pub fn avg(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(arr) = value.as_array() {
+        let nums: Vec<f64> = arr.iter().filter_map(|v| v.as_f64()).collect();
+        let avg = if nums.is_empty() {
+            0.0
+        } else {
+            nums.iter().sum::<f64>() / nums.len() as f64
+        };
+        Ok(Value::Number(
+            serde_json::Number::from_f64(avg).unwrap_or(serde_json::Number::from(0)),
+        ))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+pub fn ceil(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(n) = value.as_f64() {
+        Ok(Value::Number(
+            serde_json::Number::from_f64(n.ceil()).unwrap_or(serde_json::Number::from(0)),
+        ))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+pub fn floor(value: &Value, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+    if let Some(n) = value.as_f64() {
+        Ok(Value::Number(
+            serde_json::Number::from_f64(n.floor()).unwrap_or(serde_json::Number::from(0)),
+        ))
+    } else {
+        Ok(value.clone())
+    }
+}
+
+// ===== Phase 10: Additional Global Functions =====
+
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+pub struct CycleFn {
+    index: AtomicUsize,
+}
+
+impl CycleFn {
+    pub fn new() -> Self {
+        CycleFn {
+            index: AtomicUsize::new(0),
+        }
+    }
+}
+
+impl Function for CycleFn {
+    fn call(&self, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+        let values: Vec<Value> = (0..)
+            .map(|i| args.get(&format!("{}", i)))
+            .take_while(|v| v.is_some())
+            .map(|v| v.unwrap().clone())
+            .collect();
+
+        if values.is_empty() {
+            return Ok(Value::Null);
+        }
+
+        let idx = self.index.fetch_add(1, Ordering::SeqCst) % values.len();
+        Ok(values[idx].clone())
+    }
+}
+
+pub struct UuidFn;
+
+impl Function for UuidFn {
+    fn call(&self, _: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+        let uuid = uuid::Uuid::new_v4().to_string();
+        Ok(Value::String(uuid))
+    }
+}
+
+pub struct RandomFn;
+
+impl Function for RandomFn {
+    fn call(&self, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+
+        let min = args.get("min").and_then(|v| v.as_i64()).unwrap_or(0);
+        let max = args.get("max").and_then(|v| v.as_i64()).unwrap_or(100);
+
+        let result = rng.gen_range(min..=max);
+        Ok(Value::Number(result.into()))
+    }
+}
+
+pub struct ChoiceFn;
+
+impl Function for ChoiceFn {
+    fn call(&self, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+        use rand::seq::SliceRandom;
+        use rand::thread_rng;
+
+        let array = args
+            .get("array")
+            .ok_or_else(|| tera::Error::msg("Missing array"))?;
+        let arr = array
+            .as_array()
+            .ok_or_else(|| tera::Error::msg("Expected array"))?;
+
+        if arr.is_empty() {
+            return Ok(Value::Null);
+        }
+
+        let mut rng = thread_rng();
+        let choice = arr.choose(&mut rng).cloned();
+        Ok(choice.unwrap_or(Value::Null))
+    }
+}
+
+pub struct FileExistsFn;
+
+impl Function for FileExistsFn {
+    fn call(&self, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+        let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("");
+        let exists = std::path::Path::new(path).exists();
+        Ok(Value::Bool(exists))
+    }
+}
+
+pub struct EnvFn;
+
+impl Function for EnvFn {
+    fn call(&self, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+        let key = args.get("key").and_then(|v| v.as_str()).unwrap_or("");
+        let value = std::env::var(key).unwrap_or_default();
+        Ok(Value::String(value))
+    }
+}
+
+pub struct Md5Fn;
+
+impl Function for Md5Fn {
+    fn call(&self, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+        use md5::{Digest, Md5};
+
+        let input = args.get("string").and_then(|v| v.as_str()).unwrap_or("");
+        let result = Md5::digest(input);
+        Ok(Value::String(hex::encode(result)))
+    }
+}
+
+pub struct Sha256Fn;
+
+impl Function for Sha256Fn {
+    fn call(&self, args: &HashMap<String, Value>) -> Result<Value, tera::Error> {
+        use sha2::{Digest, Sha256};
+
+        let input = args.get("string").and_then(|v| v.as_str()).unwrap_or("");
+        let result = Sha256::digest(input);
+        Ok(Value::String(hex::encode(result)))
+    }
+}
