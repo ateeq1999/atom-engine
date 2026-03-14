@@ -361,15 +361,26 @@ impl Atom {
     pub async fn render_async(&self, template: &str, context: &Value) -> Result<String, Error> {
         let template = template.to_string();
         let context = context.clone();
-        
+
         tokio::task::spawn_blocking(move || {
             let mut tera = Tera::default();
             tera.register_filter("json_encode", filters::json_encode);
-            tera.render(&template, &Context::from_serialize(&context).map_err(|e| Error::Context { message: e.to_string() })?)
-                .map_err(|e| Error::Render { template, message: e.to_string() })
+            tera.render(
+                &template,
+                &Context::from_serialize(&context).map_err(|e| Error::Context {
+                    message: e.to_string(),
+                })?,
+            )
+            .map_err(|e| Error::Render {
+                template,
+                message: e.to_string(),
+            })
         })
         .await
-        .map_err(|e| Error::Render { template: "async".to_string(), message: e.to_string() })?
+        .map_err(|e| Error::Render {
+            template: "async".to_string(),
+            message: e.to_string(),
+        })?
     }
 
     #[cfg(feature = "async")]
@@ -378,28 +389,37 @@ impl Atom {
         templates: &[(&str, &Value)],
     ) -> std::result::Result<Vec<(String, String)>, Error> {
         use tokio::task::JoinSet;
-        
+
         let mut join_set = JoinSet::new();
-        
+
         for (name, context) in templates {
             let name = name.to_string();
             let context = context.clone();
             let filters = filters::Filters::new();
-            
+
             join_set.spawn(async move {
                 tokio::task::spawn_blocking(move || {
                     let mut tera = Tera::default();
                     tera.register_filter("json_encode", filters::json_encode);
-                    let mut ctx = Context::from_serialize(&context).map_err(|e| Error::Context { message: e.to_string() })?;
+                    let mut ctx =
+                        Context::from_serialize(&context).map_err(|e| Error::Context {
+                            message: e.to_string(),
+                        })?;
                     tera.render(&name, &ctx)
                         .map(|r| (name, r))
-                        .map_err(|e| Error::Render { template: name, message: e.to_string() })
+                        .map_err(|e| Error::Render {
+                            template: name,
+                            message: e.to_string(),
+                        })
                 })
                 .await
-                .map_err(|e| Error::Render { template: "async".to_string(), message: e.to_string() })?
+                .map_err(|e| Error::Render {
+                    template: "async".to_string(),
+                    message: e.to_string(),
+                })?
             });
         }
-        
+
         let mut results = Vec::new();
         while let Some(result) = join_set.join_next().await {
             results.push(result??);
