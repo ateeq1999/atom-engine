@@ -1,3 +1,5 @@
+pub mod filters;
+
 use glob::glob;
 use serde_json::Value;
 use std::cell::RefCell;
@@ -7,7 +9,6 @@ use tera::{Context, Filter, Function, Tera};
 mod components;
 mod context;
 mod error;
-mod filters;
 
 pub use components::{
     Component, ComponentRegistry, ComponentRenderer, PropDef, PropType, SlotData,
@@ -32,8 +33,10 @@ impl Atom {
     pub fn new() -> Self {
         let mut tera = Tera::default();
 
-        // Register filters
+        // JSON
         tera.register_filter("json_encode", filters::json_encode);
+
+        // String filters
         tera.register_filter("upper", filters::upper);
         tera.register_filter("lower", filters::lower);
         tera.register_filter("capitalize", filters::capitalize);
@@ -45,38 +48,6 @@ impl Atom {
         tera.register_filter("truncate", filters::truncate);
         tera.register_filter("slugify", filters::slugify);
         tera.register_filter("pluralize", filters::pluralize);
-        tera.register_filter("first", filters::first);
-        tera.register_filter("last", filters::last);
-        tera.register_filter("length", filters::length);
-        tera.register_filter("reverse", filters::reverse);
-        tera.register_filter("sort", filters::sort);
-        tera.register_filter("group_by", filters::group_by);
-        tera.register_filter("where", filters::where_filter);
-        tera.register_filter("pluck", filters::pluck);
-        tera.register_filter("round", filters::round);
-        tera.register_filter("abs", filters::abs);
-        tera.register_filter("format", filters::format_number);
-        tera.register_filter("date", filters::date_format);
-        tera.register_filter("escape_html", filters::escape_html);
-        tera.register_filter("safe", filters::safe);
-
-        // Register slot helper
-        tera.register_filter("slot", filters::slot_filter);
-        tera.register_filter("has_slot", filters::has_slot_filter);
-
-        // Register stack filters
-        tera.register_filter("stack", filters::stack_filter);
-
-        // Register conditional filters
-        tera.register_filter("when", filters::when);
-        tera.register_filter("default", filters::default_filter);
-        tera.register_filter("coalesce", filters::coalesce);
-        tera.register_filter("defined", filters::defined);
-        tera.register_filter("undefined", filters::undefined);
-        tera.register_filter("empty", filters::empty);
-        tera.register_filter("not_empty", filters::not_empty);
-
-        // Register additional string filters
         tera.register_filter("replace", filters::replace);
         tera.register_filter("remove", filters::remove);
         tera.register_filter("prepend", filters::prepend);
@@ -89,21 +60,24 @@ impl Atom {
         tera.register_filter("ends_with", filters::ends_with);
         tera.register_filter("contains", filters::contains);
 
-        // Register additional collection filters
+        // Collection filters
+        tera.register_filter("first", filters::first);
+        tera.register_filter("last", filters::last);
+        tera.register_filter("length", filters::length);
+        tera.register_filter("reverse", filters::reverse);
+        tera.register_filter("sort", filters::sort);
+        tera.register_filter("group_by", filters::group_by);
+        tera.register_filter("where", filters::where_filter);
+        tera.register_filter("pluck", filters::pluck);
         tera.register_filter("join", filters::join);
         tera.register_filter("slice", filters::slice);
         tera.register_filter("uniq", filters::uniq);
         tera.register_filter("shuffle", filters::shuffle);
 
-        // Register encoding filters
-        tera.register_filter("json_decode", filters::json_decode);
-        tera.register_filter("urlescape", filters::urlescape);
-        tera.register_filter("urlunescape", filters::urlunescape);
-        tera.register_filter("strip_tags", filters::strip_tags);
-        tera.register_filter("base64_encode", filters::base64_encode);
-        tera.register_filter("base64_decode", filters::base64_decode);
-
-        // Register math filters
+        // Number filters
+        tera.register_filter("round", filters::round);
+        tera.register_filter("abs", filters::abs);
+        tera.register_filter("format", filters::format_number);
         tera.register_filter("min", filters::min_filter);
         tera.register_filter("max", filters::max_filter);
         tera.register_filter("sum", filters::sum);
@@ -111,19 +85,42 @@ impl Atom {
         tera.register_filter("ceil", filters::ceil);
         tera.register_filter("floor", filters::floor);
 
-        // Register global functions
+        // Date filters
+        tera.register_filter("date", filters::date_format);
+
+        // HTML filters
+        tera.register_filter("escape_html", filters::escape_html);
+        tera.register_filter("safe", filters::safe);
+
+        // Encoding filters
+        tera.register_filter("json_decode", filters::json_decode);
+        tera.register_filter("urlescape", filters::urlescape);
+        tera.register_filter("urlunescape", filters::urlunescape);
+        tera.register_filter("strip_tags", filters::strip_tags);
+        tera.register_filter("base64_encode", filters::base64_encode);
+        tera.register_filter("base64_decode", filters::base64_decode);
+
+        // Slot helpers
+        tera.register_filter("slot", filters::slot_filter);
+        tera.register_filter("has_slot", filters::has_slot_filter);
+
+        // Stack filter
+        tera.register_filter("stack", filters::stack_filter);
+
+        // Conditional filters
+        tera.register_filter("when", filters::when);
+        tera.register_filter("default", filters::default_filter);
+        tera.register_filter("coalesce", filters::coalesce);
+        tera.register_filter("defined", filters::defined);
+        tera.register_filter("undefined", filters::undefined);
+        tera.register_filter("empty", filters::empty);
+        tera.register_filter("not_empty", filters::not_empty);
+
+        // Global functions
         tera.register_function("dump", filters::DumpFn);
         tera.register_function("log", filters::LogFn);
         tera.register_function("range", filters::RangeFn);
         tera.register_function("now", filters::NowFn);
-
-        // Register component functions
-        tera.register_function("push", filters::PushFn);
-        tera.register_function("prepend", filters::PrependFn);
-        tera.register_function("set_slot", filters::SetSlotFn);
-        tera.register_function("once", filters::OnceFn);
-
-        // Register additional global functions
         tera.register_function("cycle", filters::CycleFn::new());
         tera.register_function("uuid", filters::UuidFn);
         tera.register_function("random", filters::RandomFn);
@@ -132,6 +129,12 @@ impl Atom {
         tera.register_function("env", filters::EnvFn);
         tera.register_function("md5", filters::Md5Fn);
         tera.register_function("sha256", filters::Sha256Fn);
+
+        // Component functions
+        tera.register_function("push", filters::PushFn);
+        tera.register_function("prepend", filters::PrependFn);
+        tera.register_function("set_slot", filters::SetSlotFn);
+        tera.register_function("once", filters::OnceFn);
 
         Atom {
             tera,
@@ -213,18 +216,18 @@ impl Atom {
             message: e.to_string(),
         })?;
 
-        // Add context chain values to context
         for (key, value) in self.context_chain.all() {
             ctx.insert(key, &value);
         }
 
-        // Add component helpers
         ctx.insert("__atom_components", &self.components.list_components());
 
-        self.tera.render(template, &ctx).map_err(|e| Error::Render {
-            template: template.to_string(),
-            message: e.to_string(),
-        })
+        self.tera
+            .render(template, &ctx)
+            .map_err(|e| Error::Render {
+                template: template.to_string(),
+                message: e.to_string(),
+            })
     }
 
     pub fn render_with_components(
@@ -237,17 +240,18 @@ impl Atom {
             message: e.to_string(),
         })?;
 
-        // Add component slot data
         if let Some(obj) = component_data.as_object() {
             for (key, value) in obj {
                 ctx.insert(key, &value);
             }
         }
 
-        self.tera.render(template, &ctx).map_err(|e| Error::Render {
-            template: template.to_string(),
-            message: e.to_string(),
-        })
+        self.tera
+            .render(template, &ctx)
+            .map_err(|e| Error::Render {
+                template: template.to_string(),
+                message: e.to_string(),
+            })
     }
 
     pub fn provide(&mut self, key: &str, value: Value) {
