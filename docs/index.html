@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atom Engine v5 - Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <div class="logo">
+                <span class="logo-icon">⚛</span>
+                <span class="logo-text">Atom Engine</span>
+                <span class="version">v5</span>
+            </div>
+            <nav class="main-nav">
+                <a href="#intro">Introduction</a>
+                <a href="#guide">Guide</a>
+                <a href="#templates">Templates</a>
+                <a href="#filters">Filters</a>
+                <a href="#components">Components</a>
+                <a href="#functions">Functions</a>
+                <a href="#features">Features</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container main-container">
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3>Getting Started</h3>
+                <ul>
+                    <li><a href="#introduction">Introduction</a></li>
+                    <li><a href="#installation">Installation</a></li>
+                    <li><a href="#quickstart">Quick Start</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3>Templates</h3>
+                <ul>
+                    <li><a href="#variables">Variables</a></li>
+                    <li><a href="#comments">Comments</a></li>
+                    <li><a href="#filters-section">Filters</a></li>
+                    <li><a href="#conditionals">Conditionals</a></li>
+                    <li><a href="#loops">Loops</a></li>
+                    <li><a href="#inheritance">Inheritance</a></li>
+                    <li><a href="#includes">Includes</a></li>
+                    <li><a href="#macros">Macros</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3>Filters</h3>
+                <ul>
+                    <li><a href="#string-filters">String</a></li>
+                    <li><a href="#collection-filters">Collection</a></li>
+                    <li><a href="#number-filters">Number</a></li>
+                    <li><a href="#date-filters">Date</a></li>
+                    <li><a href="#html-filters">HTML</a></li>
+                    <li><a href="#encoding-filters">Encoding</a></li>
+                    <li><a href="#conditional-filters">Conditional</a></li>
+                    <li><a href="#helpers">Helpers</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3>Features</h3>
+                <ul>
+                    <li><a href="#components-section">Components</a></li>
+                    <li><a href="#context">Context</a></li>
+                    <li><a href="#stacks">Stacks</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3>Reference</h3>
+                <ul>
+                    <li><a href="#functions-section">Functions</a></li>
+                    <li><a href="#advanced">Advanced</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="content">
+            <section id="intro" class="doc-section">
+                <h1>Atom Engine v5</h1>
+                <p class="lead">A high-performance, component-oriented template engine for Rust built on Tera.</p>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🚀</div>
+                        <h3>Built on Tera</h3>
+                        <p>Leverages Tera's robust parsing, caching, and expression evaluation</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🧩</div>
+                        <h3>Component System</h3>
+                        <p>Reusable components with props, slots, and validation</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔄</div>
+                        <h3>50+ Filters</h3>
+                        <p>String, collection, number, date, HTML, and conditional filters</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">⚡</div>
+                        <h3>High Performance</h3>
+                        <p>Async support, parallel rendering, and component caching</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="installation" class="doc-section">
+                <h2>Installation</h2>
+                <p>Add Atom Engine to your <code>Cargo.toml</code>:</p>
+                
+                <pre><code class="language-toml">[dependencies]
+atom-engine = "5"</code></pre>
+                
+                <p>For additional features:</p>
+                
+                <pre><code class="language-toml">[dependencies]
+atom-engine = { version = "5", features = ["parallel", "async"] }</code></pre>
+                
+                <table class="features-table">
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>parallel</code></td>
+                            <td>Enable parallel rendering with Rayon</td>
+                        </tr>
+                        <tr>
+                            <td><code>async</code></td>
+                            <td>Enable async template rendering with Tokio</td>
+                        </tr>
+                        <tr>
+                            <td><code>pool-alloc</code></td>
+                            <td>Enable memory pooling for allocations</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="quickstart" class="doc-section">
+                <h2>Quick Start</h2>
+                
+                <pre><code class="language-rust">use atom_engine::Atom;
+use serde_json::json;
+
+fn main() {
+    let mut engine = Atom::new();
+    
+    engine.add_template("hello.html", "Hello, {{ name }}!").unwrap();
+    
+    let result = engine.render("hello.html", &json!({"name": "World"})).unwrap();
+    println!("{}", result);  // Hello, World!
+}</code></pre>
+            </section>
+
+            <section id="variables" class="doc-section">
+                <h2>Template Syntax</h2>
+                
+                <h3>Variables</h3>
+                <pre><code>{{ user.name }}
+{{ items[0] }}
+{{ company.address.city }}
+{{ items | length }}</code></pre>
+            </section>
+
+            <section id="comments" class="doc-section">
+                <h3>Comments</h3>
+                <pre><code>{# This is a comment #}</code></pre>
+            </section>
+
+            <section id="filters-section" class="doc-section">
+                <h3>Filters</h3>
+                <p>Filters transform values. Chain multiple filters:</p>
+                <pre><code>{{ name | upper | capitalize }}
+{{ text | truncate(length=50, end="...") }}
+{{ items | sort | reverse | first }}</code></pre>
+            </section>
+
+            <section id="conditionals" class="doc-section">
+                <h3>Conditionals</h3>
+                <pre><code>{% if user.is_active %}
+    Welcome, {{ user.name }}!
+{% elif user.is_pending %}
+    Please verify your email.
+{% else %}
+    &lt;a href="/login"&gt;Login&lt;/a&gt;
+{% endif %}</code></pre>
+
+                <h4>Boolean Operators</h4>
+                <pre><code>{% if user.is_active and user.is_verified %}
+    Verified user
+{% endif %}
+
+{% if is_admin or is_editor %}
+    Can edit content
+{% endif %}
+
+{% if not user.is_banned %}
+    Not banned
+{% endif %}</code></pre>
+            </section>
+
+            <section id="loops" class="doc-section">
+                <h3>Loops</h3>
+                <pre><code>{% for item in items %}
+    &lt;li&gt;{{ item }}&lt;/li&gt;
+{% endfor %}
+
+{% for item in items %}
+    Index: {{ loop.index }}, Value: {{ item }}
+    {% if loop.first %}First!{% endif %}
+    {% if loop.last %}Last!{% endif %}
+{% endfor %}</code></pre>
+            </section>
+
+            <section id="inheritance" class="doc-section">
+                <h3>Template Inheritance</h3>
+                <pre><code>{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+    &lt;h1&gt;{{ article.title }}&lt;/h1&gt;
+{% endblock %}</code></pre>
+            </section>
+
+            <section id="includes" class="doc-section">
+                <h3>Includes</h3>
+                <pre><code>{% include "header.html" %}
+{% includeIf "optional.html" %}
+{% includeFirst ["primary.html", "fallback.html"] %}</code></pre>
+            </section>
+
+            <section id="macros" class="doc-section">
+                <h3>Macros</h3>
+                <pre><code>{% macro button(text, type="primary") %}
+&lt;button class="btn btn-{{ type }}"&gt;{{ text }}&lt;/button&gt;
+{% endmacro %}
+
+{{ button("Submit", type="success") }}</code></pre>
+            </section>
+
+            <section id="string-filters" class="doc-section">
+                <h2>String Filters</h2>
+                <table class="filter-table">
+                    <thead>
+                        <tr>
+                            <th>Filter</th>
+                            <th>Description</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>upper</code></td>
+                            <td>Uppercase</td>
+                            <td><code>{{ "hello" | upper }}</code> → HELLO</td>
+                        </tr>
+                        <tr>
+                            <td><code>lower</code></td>
+                            <td>Lowercase</td>
+                            <td><code>{{ "HELLO" | lower }}</code> → hello</td>
+                        </tr>
+                        <tr>
+                            <td><code>capitalize</code></td>
+                            <td>Capitalize first letter</td>
+                            <td><code>{{ "hello" | capitalize }}</code> → Hello</td>
+                        </tr>
+                        <tr>
+                            <td><code>title</code></td>
+                            <td>Title case</td>
+                            <td><code>{{ "hello world" | title }}</code> → Hello World</td>
+                        </tr>
+                        <tr>
+                            <td><code>camel_case</code></td>
+                            <td>camelCase</td>
+                            <td><code>{{ "hello_world" | camel_case }}</code> → helloWorld</td>
+                        </tr>
+                        <tr>
+                            <td><code>pascal_case</code></td>
+                            <td>PascalCase</td>
+                            <td><code>{{ "hello_world" | pascal_case }}</code> → HelloWorld</td>
+                        </tr>
+                        <tr>
+                            <td><code>snake_case</code></td>
+                            <td>snake_case</td>
+                            <td><code>{{ "helloWorld" | snake_case }}</code> → hello_world</td>
+                        </tr>
+                        <tr>
+                            <td><code>kebab_case</code></td>
+                            <td>kebab-case</td>
+                            <td><code>{{ "helloWorld" | kebab_case }}</code> → hello-world</td>
+                        </tr>
+                        <tr>
+                            <td><code>truncate(length, end?)</code></td>
+                            <td>Truncate string</td>
+                            <td><code>{{ "Hello World" | truncate(length=5) }}</code> → Hello...</td>
+                        </tr>
+                        <tr>
+                            <td><code>slugify</code></td>
+                            <td>URL-safe slug</td>
+                            <td><code>{{ "Hello World!" | slugify }}</code> → hello-world</td>
+                        </tr>
+                        <tr>
+                            <td><code>replace(old, new)</code></td>
+                            <td>Replace text</td>
+                            <td><code>{{ "Hi" | replace(old="Hi", new="Hello") }}</code> → Hello</td>
+                        </tr>
+                        <tr>
+                            <td><code>pluralize</code></td>
+                            <td>Pluralize</td>
+                            <td><code>{{ 2 | pluralize }}</code> → s</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="collection-filters" class="doc-section">
+                <h2>Collection Filters</h2>
+                <table class="filter-table">
+                    <thead>
+                        <tr>
+                            <th>Filter</th>
+                            <th>Description</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>first</code></td>
+                            <td>First element</td>
+                            <td><code>{{ [1,2,3] | first }}</code> → 1</td>
+                        </tr>
+                        <tr>
+                            <td><code>last</code></td>
+                            <td>Last element</td>
+                            <td><code>{{ [1,2,3] | last }}</code> → 3</td>
+                        </tr>
+                        <tr>
+                            <td><code>length</code></td>
+                            <td>Count elements</td>
+                            <td><code>{{ [1,2,3] | length }}</code> → 3</td>
+                        </tr>
+                        <tr>
+                            <td><code>reverse</code></td>
+                            <td>Reverse array</td>
+                            <td><code>{{ [1,2,3] | reverse }}</code> → [3,2,1]</td>
+                        </tr>
+                        <tr>
+                            <td><code>sort</code></td>
+                            <td>Sort array</td>
+                            <td><code>{{ [3,1,2] | sort }}</code> → [1,2,3]</td>
+                        </tr>
+                        <tr>
+                            <td><code>group_by(attribute)</code></td>
+                            <td>Group by field</td>
+                            <td>Groups array by property</td>
+                        </tr>
+                        <tr>
+                            <td><code>where(attribute, value?)</code></td>
+                            <td>Filter array</td>
+                            <td>Filters by condition</td>
+                        </tr>
+                        <tr>
+                            <td><code>pluck(attribute)</code></td>
+                            <td>Extract field</td>
+                            <td>Extracts property from objects</td>
+                        </tr>
+                        <tr>
+                            <td><code>join(separator)</code></td>
+                            <td>Join array</td>
+                            <td><code>{{ ["a","b"] | join("-") }}</code> → a-b</td>
+                        </tr>
+                        <tr>
+                            <td><code>slice(start, length)</code></td>
+                            <td>Array slice</td>
+                            <td><code>{{ [1,2,3,4] | slice(start=1, length=2) }}</code> → [2,3]</td>
+                        </tr>
+                        <tr>
+                            <td><code>uniq</code></td>
+                            <td>Unique elements</td>
+                            <td><code>{{ [1,2,1] | uniq }}</code> → [1,2]</td>
+                        </tr>
+                        <tr>
+                            <td><code>shuffle</code></td>
+                            <td>Random shuffle</td>
+                            <td>Randomizes array order</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="number-filters" class="doc-section">
+                <h2>Number Filters</h2>
+                <table class="filter-table">
+                    <thead>
+                        <tr>
+                            <th>Filter</th>
+                            <th>Description</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>round(precision?)</code></td>
+                            <td>Round number</td>
+                            <td><code>{{ 3.7 | round }}</code> → 4</td>
+                        </tr>
+                        <tr>
+                            <td><code>abs</code></td>
+                            <td>Absolute value</td>
+                            <td><code>{{ -42 | abs }}</code> → 42</td>
+                        </tr>
+                        <tr>
+                            <td><code>format(format?)</code></td>
+                            <td>Format number</td>
+                            <td><code>{{ 1000000 | format }}</code> → 1,000,000</td>
+                        </tr>
+                        <tr>
+                            <td><code>min</code></td>
+                            <td>Minimum</td>
+                            <td><code>{{ [3,1,2] | min }}</code> → 1</td>
+                        </tr>
+                        <tr>
+                            <td><code>max</code></td>
+                            <td>Maximum</td>
+                            <td><code>{{ [3,1,2] | max }}</code> → 3</td>
+                        </tr>
+                        <tr>
+                            <td><code>sum</code></td>
+                            <td>Sum</td>
+                            <td><code>{{ [1,2,3] | sum }}</code> → 6</td>
+                        </tr>
+                        <tr>
+                            <td><code>avg</code></td>
+                            <td>Average</td>
+                            <td><code>{{ [1,2,3] | avg }}</code> → 2</td>
+                        </tr>
+                        <tr>
+                            <td><code>ceil</code></td>
+                            <td>Ceiling</td>
+                            <td><code>{{ 3.1 | ceil }}</code> → 4</td>
+                        </tr>
+                        <tr>
+                            <td><code>floor</code></td>
+                            <td>Floor</td>
+                            <td><code>{{ 3.9 | floor }}</code> → 3</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="helpers" class="doc-section">
+                <h2>Helper Directives</h2>
+                
+                <h3>@map - Transform Array Elements</h3>
+                <pre><code>{{ users | map(prop="name") | join(", ") }}
+{{ users | map(prop="name", transform="upper") }}</code></pre>
+
+                <h3>@filter - Filter Array Elements</h3>
+                <pre><code>{{ users | filter(key="active", value=true) }}
+{{ users | filter(key="age", value=18, op="gte") }}</code></pre>
+
+                <h3>@each - Iterate with Index</h3>
+                <pre><code>{% for item in items | each(index=true) %}
+    {{ item.index }}: {{ item.value }}
+{% endfor %}</code></pre>
+
+                <h3>@reduce - Reduce to Value</h3>
+                <pre><code>{{ numbers | reduce(initial=0) }}
+{{ users | reduce(initial=0, prop="age") }}</code></pre>
+
+                <h3>@flatten - Flatten Arrays</h3>
+                <pre><code>{{ [[1,2], [3,4]] | flatten | join(", ") }}
+{# Output: 1,2,3,4 #}</code></pre>
+
+                <h3>@partition - Split Array</h3>
+                <pre><code>{% set partitioned = users | partition(key="active") %}
+Matched: {{ partitioned.matched | length }}
+Rest: {{ partitioned.rest | length }}</code></pre>
+            </section>
+
+            <section id="components-section" class="doc-section">
+                <h2>Components</h2>
+                
+                <h3>Registering Components</h3>
+                <pre><code class="language-rust">engine.register_component(
+    "button",
+    r#"&lt;button class="btn btn-{{ type }}"&gt;{{ text }}&lt;/button&gt;"#
+).unwrap();</code></pre>
+
+                <h3>Using Components</h3>
+                <pre><code>{% call button(text="Click Me", type="primary") %}</code></pre>
+
+                <h3>Props Definition</h3>
+                <pre><code>{%-- atom: @props(name:String, age:Number, active:Boolean=true) --%}</code></pre>
+
+                <h3>Slots</h3>
+                <pre><code>{{ $slots.default() }}
+{{ $slots.header() }}
+{{ $slots.footer() }}</code></pre>
+            </section>
+
+            <section id="context" class="doc-section">
+                <h2>Context (Provide/Inject)</h2>
+                
+                <h3>Providing Values</h3>
+                <pre><code class="language-rust">engine.provide("theme", json!("dark"));
+engine.provide("user", json!({"name": "Alice", "role": "admin"}));</code></pre>
+
+                <h3>Using in Templates</h3>
+                <pre><code>Theme: {{ __context.theme }}
+User: {{ __context.user.name }}</code></pre>
+            </section>
+
+            <section id="stacks" class="doc-section">
+                <h2>Stack System</h2>
+                
+                <pre><code>{% call push(name="scripts", content="&lt;script&gt;alert('hi')&lt;/script&gt;") %}
+{% call prepend(name="styles", content="&lt;link rel='stylesheet' href='a.css'&gt;") %}
+
+{{ "scripts" | stack }}</code></pre>
+            </section>
+
+            <section id="functions-section" class="doc-section">
+                <h2>Global Functions</h2>
+                <table class="filter-table">
+                    <thead>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>range(start?, end, step_by?)</code></td>
+                            <td>Generate range</td>
+                            <td><code>{{ range(end=5) }}</code> → [0,1,2,3,4]</td>
+                        </tr>
+                        <tr>
+                            <td><code>now(utc?, timestamp?)</code></td>
+                            <td>Current datetime</td>
+                            <td><code>{{ now() }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>uuid()</code></td>
+                            <td>Generate UUID</td>
+                            <td><code>{{ uuid() }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>random(min, max)</code></td>
+                            <td>Random number</td>
+                            <td><code>{{ random(min=1, max=100) }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>choice(array)</code></td>
+                            <td>Random array item</td>
+                            <td><code>{{ choice(array=["a","b","c"]) }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>md5(string)</code></td>
+                            <td>MD5 hash</td>
+                            <td><code>{{ md5(string="hello") }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>sha256(string)</code></td>
+                            <td>SHA256 hash</td>
+                            <td><code>{{ sha256(string="hello") }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>repeat(content, count, separator?)</code></td>
+                            <td>Repeat string</td>
+                            <td><code>{{ repeat(content="ab", count=3) }}</code> → ababab</td>
+                        </tr>
+                        <tr>
+                            <td><code>times(times, start?, step?)</code></td>
+                            <td>Generate sequence</td>
+                            <td><code>{{ times(times=3) }}</code> → [0,1,2]</td>
+                        </tr>
+                        <tr>
+                            <td><code>object(keys, values)</code></td>
+                            <td>Create object</td>
+                            <td><code>{{ object(keys=["a"], values=[1]) }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>merge(array1, array2)</code></td>
+                            <td>Merge arrays</td>
+                            <td><code>{{ merge(array1=[1], array2=[2]) }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>chunk(array, size)</code></td>
+                            <td>Chunk array</td>
+                            <td><code>{{ chunk(array=[1,2,3,4], size=2) }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>compact(array)</code></td>
+                            <td>Remove nulls</td>
+                            <td><code>{{ compact(array=[1,null,2]) }}</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="advanced" class="doc-section">
+                <h2>Advanced Features</h2>
+                
+                <h3>Component Caching</h3>
+                <pre><code class="language-rust">engine.enable_component_cache(true);
+let result = engine.render("page.html", &ctx).unwrap();
+println!("Cache size: {}", engine.component_cache_len());
+engine.clear_component_cache();</code></pre>
+
+                <h3>Async Rendering</h3>
+                <pre><code class="language-rust">#[cfg(feature = "async")]
+async fn render() {
+    let engine = Atom::new();
+    let result = engine.render_async("template.html", &json!({})).await.unwrap();
+}</code></pre>
+
+                <h3>Parallel Rendering</h3>
+                <pre><code class="language-rust">#[cfg(feature = "parallel")]
+let results = engine.render_many(&[
+    ("t1.html", &json!({})),
+    ("t2.html", &json!({})),
+]).unwrap();</code></pre>
+            </section>
+        </main>
+    </div>
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>Atom Engine v5 - A component-oriented template engine for Rust</p>
+            <p>Built on Tera | MIT OR Apache-2.0 License</p>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Highlight current section in sidebar
+        const sections = document.querySelectorAll('.doc-section');
+        const navLinks = document.querySelectorAll('.sidebar a');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
