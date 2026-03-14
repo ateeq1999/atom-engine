@@ -1,0 +1,18 @@
+=== String Filters ===
+
+Original: {{ text }}
+
+upper: {{ text | upper }}
+lower: {{ UPPER | lower }}
+capitalize: {{ text | capitalize }}
+title: {{ text | title }}
+
+camel_case: {{ text | camel_case }}
+pascal_case: {{ text | pascal_case }}
+snake_case: {{ text | snake_case }}
+kebab_case: {{ text | kebab_case }}
+
+truncate(15): {{ long_text | truncate(length=15) }}
+truncate(20, "~~>"): {{ long_text | truncate(length=20, end="~~>") }}
+
+slugify: {{ slug_text | slugify }}

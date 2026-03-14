@@ -1,0 +1,29 @@
+=== Basic For Loop ===
+
+{% for item in items %}
+- {{ item }}
+{% endfor %}
+
+=== For Loop with Index ===
+
+{% for item in items %}
+{{ loop.index }}: {{ item }}{% if not loop.last %}, {% endif %}
+{% endfor %}
+
+=== First and Last ===
+
+{% for item in items %}
+{% if loop.first %}(FIRST) {% endif %}{{ item }}{% if loop.last %} (LAST){% endif %}
+{% endfor %}
+
+=== For Loop Keys ===
+
+{% for key, value in user %}
+{{ key }}: {{ value }}
+{% endfor %}
+
+=== Range ===
+
+{% for i in range(end=5) %}
+{{ i }}{% if not loop.last %}, {% endif %}
+{% endfor %}

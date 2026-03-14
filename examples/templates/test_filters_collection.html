@@ -1,0 +1,20 @@
+=== Collection Filters ===
+
+Original: {{ items }}
+
+first: {{ items | first }}
+last: {{ items | last }}
+length: {{ items | length }}
+reverse: {{ items | reverse }}
+sort: {{ items | sort }}
+
+=== Where Filter ===
+All items: {{ items }}
+Tech posts: {{ posts | where(attribute="category", value="tech") }}
+
+=== Pluck Filter ===
+All posts: {{ posts }}
+Post titles: {{ posts | pluck(attribute="title") }}
+
+=== Group By ===
+Posts by category: {{ posts | group_by(attribute="category") }}

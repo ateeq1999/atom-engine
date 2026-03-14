@@ -1,0 +1,26 @@
+=== Provided Context Values ===
+
+Theme: {{ theme }}
+Site Name: {{ site_name }}
+User Name: {{ user.name }}
+User Role: {{ user.role }}
+API URL: {{ api_url }}
+Features: {{ features | length }}
+
+=== Conditional Based on Context ===
+
+{% if theme == "dark" %}
+Dark theme is active
+{% else %}
+Light theme is active
+{% endif %}
+
+{% if user.role == "admin" %}
+Admin access granted
+{% endif %}
+
+=== Loop with Context ===
+
+{% for feature in features %}
+- {{ feature }}
+{% endfor %}

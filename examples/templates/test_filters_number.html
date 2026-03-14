@@ -1,0 +1,15 @@
+=== Number Filters ===
+
+Original: {{ price }}
+
+round: {{ price | round }}
+round(2): {{ price | round(precision=2) }}
+
+abs(-42.5): {{ -42.5 | abs }}
+abs(0): {{ 0 | abs }}
+
+=== Date Filters ===
+
+Original: {{ created_at }}
+date: {{ created_at | date(format="%B %d, %Y") }}
+date(short): {{ created_at | date(format="%m/%d/%Y") }}

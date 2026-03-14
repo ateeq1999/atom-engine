@@ -1,0 +1,17 @@
+=== Conditional Filters ===
+
+null_value | default: "{{ null_value | default(value="fallback") }}"
+empty_string | default: "{{ empty_string | default(value="fallback") }}"
+has_value | default: "{{ has_value | default(value="fallback") }}"
+
+=== When (ternary) ===
+is_active | when: "{{ is_active | when(then="Active", else="Inactive") }}"
+
+=== Coalesce ===
+first non-null: "{{ null_value | coalesce(value=empty_string, other="all null") }}"
+
+=== Empty/Defined ===
+empty_string | empty: {{ empty_string | empty }}
+has_value | empty: {{ has_value | empty }}
+null_value | undefined: {{ null_value | undefined }}
+has_value | defined: {{ has_value | defined }}

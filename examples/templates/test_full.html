@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Full Test</title>
+</head>
+<body>
+  <h1>{{ page_title }}</h1>
+  
+  {% if user.is_logged_in %}
+    <p>Welcome, {{ user.name }}!</p>
+  {% endif %}
+
+  <ul>
+  {% for product in products %}
+    <li>{{ product.name }} - ${{ product.price }}</li>
+  {% endfor %}
+  </ul>
+
+  <footer>
+    <p>&copy; {{ year }}</p>
+  </footer>
+</body>
+</html>

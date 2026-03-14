@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{% block title %}Default Title{% endblock %}</title>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <header>
+    {% block header %}
+      <h1>Default Header</h1>
+    {% endblock %}
+  </header>
+  
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  
+  <footer>
+    {% block footer %}
+      <p>&copy; 2024</p>
+    {% endblock %}
+  </footer>
+</body>
+</html>

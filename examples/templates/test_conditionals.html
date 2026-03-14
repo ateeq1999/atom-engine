@@ -1,0 +1,47 @@
+=== Basic If/Elif/Else ===
+
+{% if user.is_admin %}
+User is Admin
+{% elif user.is_moderator %}
+User is Moderator
+{% elif user.is_logged_in %}
+User is Logged In
+{% else %}
+User is Guest
+{% endif %}
+
+=== Boolean Operators ===
+
+{% if user.is_active and user.is_verified %}
+User is active and verified
+{% endif %}
+
+{% if user.is_banned or user.is_suspended %}
+User is banned or suspended
+{% endif %}
+
+{% if not user.is_active %}
+User is not active
+{% endif %}
+
+=== Comparison Operators ===
+
+{% if user.age >= 18 %}
+User is adult
+{% endif %}
+
+{% if user.role == "admin" %}
+User is admin
+{% endif %}
+
+{% if user.role != "guest" %}
+  User is not guest
+{% endif %}
+
+=== Length Checks ===
+
+{% if items | length > 0 %}
+Items count: {{ items | length }}
+{% else %}
+No items
+{% endif %}
